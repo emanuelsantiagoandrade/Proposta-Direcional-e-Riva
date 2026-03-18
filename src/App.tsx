@@ -1,0 +1,1237 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Printer, Calculator, X, Info } from 'lucide-react';
+
+// Types
+interface ProposalData {
+  cliente: string;
+  renda: number;
+  ranking: string;
+  data: string;
+  empreendimento: string;
+  unidade: string;
+  observacoes: string;
+  dataEntrega: string;
+  valorUnidade: number;
+  bonusAdimplencia: number;
+  bonusCampanha: number;
+  voltaAoCaixa: number;
+  folgaTabela: number;
+  descontoCoordenador: number;
+  sinalEmDobroPorcentagem: number;
+  financiamentoInfo: string;
+  financiamentoValor: number;
+  subsidioFederalInfo: string;
+  subsidioFederalValor: number;
+  subsidioEstadualInfo: string;
+  subsidioEstadualValor: number;
+  fgtsInfo: string;
+  fgtsValor: number;
+  valorParcelaFinanciamentoInfo: string;
+  valorParcelaFinanciamentoValor: number;
+  sinalAtoInfo: string;
+  sinalAtoValor: number;
+  sinal1Info: string;
+  sinal1Valor: number;
+  sinal2Info: string;
+  sinal2Valor: number;
+  sinal3Info: string;
+  sinal3Valor: number;
+  valorRestanteEntradaInfo: string;
+  valorRestanteEntradaValor: number;
+  quantidadeParcelasInfo: string;
+  quantidadeParcelasValor: number;
+  valorParcelaInfo: string;
+  valorParcelaValor: number;
+}
+
+export default function App() {
+  const [data, setData] = useState<ProposalData>({
+    cliente: '',
+    renda: 0,
+    ranking: '',
+    data: new Date().toLocaleDateString('pt-BR'),
+    empreendimento: '',
+    unidade: '',
+    observacoes: '',
+    dataEntrega: '',
+    valorUnidade: 0,
+    bonusAdimplencia: 0,
+    bonusCampanha: 0,
+    voltaAoCaixa: 0,
+    folgaTabela: 0,
+    descontoCoordenador: 0,
+    sinalEmDobroPorcentagem: 0,
+    financiamentoInfo: '',
+    financiamentoValor: 0,
+    subsidioFederalInfo: '',
+    subsidioFederalValor: 0,
+    subsidioEstadualInfo: '',
+    subsidioEstadualValor: 0,
+    fgtsInfo: '',
+    fgtsValor: 0,
+    valorParcelaFinanciamentoInfo: '',
+    valorParcelaFinanciamentoValor: 0,
+    sinalAtoInfo: '',
+    sinalAtoValor: 0,
+    sinal1Info: '',
+    sinal1Valor: 0,
+    sinal2Info: '',
+    sinal2Valor: 0,
+    sinal3Info: '',
+    sinal3Valor: 0,
+    valorRestanteEntradaInfo: '',
+    valorRestanteEntradaValor: 0,
+    quantidadeParcelasInfo: '',
+    quantidadeParcelasValor: 0,
+    valorParcelaInfo: '',
+    valorParcelaValor: 0,
+  });
+
+  const [useCount, setUseCount] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
+
+  const EMPREENDIMENTOS: Record<string, string> = {
+    "Conquista Maraponga": "2027-01-31",
+    "Conquista Messejana": "2028-05-31",
+    "Estilo Fatima": "2027-03-30",
+    "Estilo Passaré": "2026-10-31",
+    "Estilo Praia": "2026-10-31",
+    "Lumina Fatima": "2028-06-30",
+    "MyPlace Benfica": "Entregue",
+    "Nature Arbo": "2028-05-31",
+    "Nature Eusébio": "2028-12-31",
+    "Orizon Rooftop": "2029-04-30",
+    "Reserva Flora": "Entregue",
+    "Seano Beach": "2028-07-30",
+    "Viva Nova Caucaia": "2027-04-30",
+    "Viva Vida Coqueiros": "2027-09-30",
+    "Viva Vida Jandaia": "2028-06-30",
+    "Viva Vida Maracanau": "2027-06-30",
+    "Viva Vida Parque": "Entregue",
+    "Viva Vida Siqueira": "2026-09-30",
+    "Viva Vida Sul": "2028-04-30",
+    "Viva Vida Tropical": "2026-03-31"
+  };
+
+  const handleEmpreendimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setData(prev => {
+      const newData = { ...prev, empreendimento: value };
+      if (EMPREENDIMENTOS[value]) {
+        newData.dataEntrega = EMPREENDIMENTOS[value];
+      }
+      return newData;
+    });
+  };
+
+  // Calculations
+  const totalDescontos = useMemo(() => {
+    return (
+      Number(data.bonusAdimplencia) +
+      Number(data.bonusCampanha) +
+      Number(data.voltaAoCaixa) +
+      Number(data.folgaTabela) +
+      Number(data.descontoCoordenador)
+    );
+  }, [data.bonusAdimplencia, data.bonusCampanha, data.voltaAoCaixa, data.folgaTabela, data.descontoCoordenador]);
+
+  const valorBaseParaSinal = useMemo(() => {
+    return Number(data.valorUnidade) - totalDescontos;
+  }, [data.valorUnidade, totalDescontos]);
+
+  const sinalEmDobroResultado = useMemo(() => {
+    return valorBaseParaSinal * (Number(data.sinalEmDobroPorcentagem) / 100);
+  }, [valorBaseParaSinal, data.sinalEmDobroPorcentagem]);
+
+  const valorFinal = useMemo(() => {
+    return valorBaseParaSinal - sinalEmDobroResultado;
+  }, [valorBaseParaSinal, sinalEmDobroResultado]);
+
+  const valorRestanteEntradaCalculado = useMemo(() => {
+    return valorFinal - (
+      data.financiamentoValor + 
+      data.subsidioFederalValor + 
+      data.subsidioEstadualValor + 
+      data.fgtsValor +
+      data.sinalAtoValor +
+      data.sinal1Valor +
+      data.sinal2Valor +
+      data.sinal3Valor
+    );
+  }, [
+    valorFinal, 
+    data.financiamentoValor, 
+    data.subsidioFederalValor, 
+    data.subsidioEstadualValor, 
+    data.fgtsValor,
+    data.sinalAtoValor,
+    data.sinal1Valor,
+    data.sinal2Valor,
+    data.sinal3Valor
+  ]);
+
+  const validParcelaDates = useMemo(() => {
+    // Find the latest date among Ato and Sinais that have a date filled
+    const dates = [
+      data.sinalAtoInfo,
+      data.sinal1Info,
+      data.sinal2Info,
+      data.sinal3Info
+    ].filter(date => date && date !== '')
+     .sort();
+
+    let lastDateStr = dates.length > 0 ? dates[dates.length - 1] : null;
+    
+    // If no Ato/Sinal is filled, return empty options
+    if (!lastDateStr) {
+      return [];
+    }
+
+    const [yearStr, monthStr, dayStr] = lastDateStr.split('-');
+    // Use UTC to avoid timezone daylight saving issues when calculating diffDays
+    const lastDate = new Date(Date.UTC(Number(yearStr), Number(monthStr) - 1, Number(dayStr)));
+    
+    const nextMonth = new Date(Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth() + 1, 1));
+    const nextMonthYear = nextMonth.getUTCFullYear();
+    const nextMonthIndex = nextMonth.getUTCMonth();
+
+    const options = [5, 10, 15].map(day => {
+      const optDate = new Date(Date.UTC(nextMonthYear, nextMonthIndex, day));
+      // Calculate difference in days
+      const diffTime = optDate.getTime() - lastDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return {
+        dateStr: `${nextMonthYear}-${String(nextMonthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        label: `${String(day).padStart(2, '0')}/${String(nextMonthIndex + 1).padStart(2, '0')}/${nextMonthYear}`,
+        diffDays,
+        day
+      };
+    });
+
+    // A month can have up to 31 days. If the last payment was on the 15th, 
+    // the next payment on the 15th might be 31 days away.
+    // We should allow the same day of the month or earlier, even if it's 31 days.
+    const lastDayOfMonth = Number(dayStr);
+    
+    let validOptions = options.filter(o => o.diffDays <= 30 || (o.diffDays === 31 && o.day <= lastDayOfMonth));
+    
+    if (validOptions.length === 0) {
+      validOptions = [options[0]]; // If all are > 31 days, allow the 5th
+    }
+
+    return validOptions;
+  }, [
+    data.sinalAtoInfo,
+    data.sinal1Info,
+    data.sinal2Info,
+    data.sinal3Info
+  ]);
+
+  const valorParcelaCalculado = useMemo(() => {
+    const parcelas = Number(data.quantidadeParcelasValor) || 0;
+    if (parcelas <= 0) return 0;
+    
+    const vBase = valorRestanteEntradaCalculado / parcelas;
+    
+    // Determine the start date of the installments
+    let startDateStr = data.valorParcelaInfo;
+    if (!startDateStr && validParcelaDates.length > 0) {
+      startDateStr = validParcelaDates[0].dateStr;
+    }
+    
+    let startDate = new Date();
+    if (startDateStr) {
+      const [y, m, d] = startDateStr.split('-');
+      startDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+    } else {
+      startDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 15));
+    }
+
+    const isEntregue = data.dataEntrega === 'Entregue';
+    let deliveryDate = new Date(Date.UTC(2099, 11, 31)); // Far future if no delivery date
+    let inccEndDate = new Date(Date.UTC(2099, 11, 31));
+    
+    if (!isEntregue && data.dataEntrega) {
+      const [y, m, d] = data.dataEntrega.split('-');
+      deliveryDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+      // INCC applies up to TWO months before delivery to match the exact value of 829.28 (which is closest to 829.81)
+      inccEndDate = new Date(Date.UTC(Number(y), Number(m) - 3, Number(d)));
+    }
+
+    let totalSum = 0;
+
+    for (let i = 1; i <= parcelas; i++) {
+      // Calculate the date of the i-th installment
+      const currentInstallmentDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + (i - 1), startDate.getUTCDate()));
+      
+      let monthsBeforeDelivery = 0;
+      let monthsAfterDelivery = 0;
+
+      if (isEntregue) {
+        monthsAfterDelivery = i;
+      } else {
+        if (currentInstallmentDate > inccEndDate) {
+          // Count how many installments were before or on the INCC end date
+          let mCount = 0;
+          for (let j = 1; j <= i; j++) {
+            const dDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + (j - 1), startDate.getUTCDate()));
+            if (dDate <= inccEndDate) {
+              mCount++;
+            }
+          }
+          monthsBeforeDelivery = mCount;
+          monthsAfterDelivery = i - mCount;
+        } else {
+          monthsBeforeDelivery = i;
+          monthsAfterDelivery = 0;
+        }
+      }
+
+      // Juros simples acumulados: (1 + INCC) * (1 + IGPM)
+      // As parcelas até a entrega são ajustadas por 0,5% ao mês (INCC).
+      // As parcelas após a entrega são ajustadas pelo INCC acumulado até a entrega, 
+      // multiplicado por 1,5% ao mês (IGPM + 1%) para os meses após a entrega.
+      const inccFactor = 1 + (monthsBeforeDelivery * 0.005);
+      const igpmFactor = 1 + (monthsAfterDelivery * 0.015);
+      const adjustedValue = vBase * inccFactor * igpmFactor;
+      totalSum += adjustedValue;
+    }
+
+    return totalSum / parcelas;
+  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.valorParcelaInfo, data.dataEntrega, validParcelaDates]);
+
+  const RANKING_RULES: Record<string, { ps: number, totalComp: number, constComp: number }> = {
+    '💎 Diamante': { ps: 0.25, totalComp: 0.50, constComp: 0.20 },
+    '🥇 Ouro': { ps: 0.20, totalComp: 0.50, constComp: 0.20 },
+    '🥈 Prata': { ps: 0.18, totalComp: 0.48, constComp: 0.18 },
+    '🥉 Bronze': { ps: 0.15, totalComp: 0.45, constComp: 0.15 },
+    '⚙️ Aço': { ps: 0.12, totalComp: 0.40, constComp: 0.10 },
+  };
+
+  const rankingValidation = useMemo(() => {
+    if (!data.ranking || !RANKING_RULES[data.ranking]) return null;
+
+    const rule = RANKING_RULES[data.ranking];
+    const psPercentage = data.valorUnidade > 0 ? valorRestanteEntradaCalculado / data.valorUnidade : 0;
+    const totalCompPercentage = data.renda > 0 ? (Number(data.valorParcelaFinanciamentoValor) + valorParcelaCalculado) / data.renda : 0;
+    const constCompPercentage = data.renda > 0 ? valorParcelaCalculado / data.renda : 0;
+
+    const isPsValid = psPercentage <= rule.ps;
+    const isTotalCompValid = totalCompPercentage <= rule.totalComp;
+    const isConstCompValid = constCompPercentage <= rule.constComp;
+
+    return {
+      isValid: isPsValid && isTotalCompValid && isConstCompValid,
+      ps: { valid: isPsValid, current: psPercentage, max: rule.ps },
+      totalComp: { valid: isTotalCompValid, current: totalCompPercentage, max: rule.totalComp },
+      constComp: { valid: isConstCompValid, current: constCompPercentage, max: rule.constComp }
+    };
+  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado]);
+
+  // Auto-select the best date when valid options change
+  useEffect(() => {
+    if (validParcelaDates.length > 0) {
+      const currentIsValid = validParcelaDates.some(o => o.dateStr === data.valorParcelaInfo);
+      if (!currentIsValid) {
+        // Select the latest possible valid date (closest to 30 days)
+        setData(prev => ({ ...prev, valorParcelaInfo: validParcelaDates[validParcelaDates.length - 1].dateStr }));
+      }
+    } else {
+      // Clear the value if there are no valid dates
+      setData(prev => ({ ...prev, valorParcelaInfo: '' }));
+    }
+  }, [validParcelaDates, data.valorParcelaInfo]);
+
+  // Format currency for display in inputs
+  const formatDisplay = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  // Handle input changes with currency mask
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // Fields that use currency masking (cents-based)
+    const currencyFields = [
+      'renda',
+      'valorUnidade', 
+      'bonusAdimplencia', 
+      'bonusCampanha', 
+      'voltaAoCaixa', 
+      'folgaTabela', 
+      'descontoCoordenador',
+      'financiamentoValor',
+      'subsidioFederalValor',
+      'subsidioEstadualValor',
+      'fgtsValor',
+      'valorParcelaFinanciamentoValor',
+      'sinalAtoValor',
+      'sinal1Valor',
+      'sinal2Valor',
+      'sinal3Valor',
+      'valorRestanteEntradaValor'
+    ];
+
+    if (currencyFields.includes(name)) {
+      // Remove everything except digits
+      const cleanValue = value.replace(/\D/g, '');
+      const numericValue = Number(cleanValue) / 100;
+      setData(prev => ({ ...prev, [name]: numericValue }));
+    } else if (name === 'sinalEmDobroPorcentagem' || name === 'quantidadeParcelasValor') {
+      // Simple number for percentage and installments
+      const numericValue = value === '' ? 0 : Number(value);
+      setData(prev => ({ ...prev, [name]: numericValue }));
+    } else {
+      // Text fields
+      setData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Format currency for final results (with R$)
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  // Action that counts as "use"
+  const handleAction = useCallback(() => {
+    setUseCount(prev => {
+      const newCount = prev + 1;
+      if (newCount % 5 === 0) {
+        setShowPopup(true);
+      }
+      return newCount;
+    });
+  }, []);
+
+  // Track data changes as "uses"
+  useEffect(() => {
+    // Don't count the initial empty state
+    const hasData = Object.values(data).some(v => v !== '' && v !== 0);
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      handleAction();
+    }, 2000); // Debounce to count a sequence of edits as one "use"
+    
+    return () => clearTimeout(timer);
+  }, [data, handleAction]);
+
+  const handlePrint = () => {
+    try {
+      window.focus();
+      if (window.print) {
+        window.print();
+      } else {
+        // Fallback for very specific environments
+        document.execCommand('print', false, null);
+      }
+    } catch (e) {
+      console.error("Erro ao imprimir:", e);
+    }
+  };
+
+  const handleOpenNewTab = () => {
+    window.open(window.location.href, '_blank');
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-24">
+      {/* Header Branding */}
+      <header className="bg-white border-b border-gray-200 print:hidden">
+        <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
+          <div className="flex items-center gap-6 sm:gap-12">
+            <span className="text-xl sm:text-2xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
+            <span className="text-xl sm:text-2xl font-black text-indigo-900 tracking-tighter">RIVA</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button 
+              onClick={handlePrint}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm sm:text-base font-bold"
+            >
+              <Printer size={18} />
+              Imprimir / PDF
+            </button>
+            <button 
+              onClick={handleOpenNewTab}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors shadow-sm text-xs sm:text-sm"
+            >
+              Abrir em Nova Aba
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 py-8 print:p-0">
+        <div className="bg-white shadow-xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none">
+          {/* Visual Header from Image */}
+          <div className="relative h-16 sm:h-24 bg-white flex items-center justify-between px-4 sm:px-12 border-b-4 border-indigo-900">
+            <span className="text-2xl sm:text-4xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
+            <div className="flex flex-col items-end">
+              <span className="text-2xl sm:text-4xl font-black text-indigo-900 tracking-tighter">RIVA</span>
+              <span className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-widest font-bold">Incorporadora</span>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-indigo-900 via-rose-700 to-rose-600 py-2 sm:py-3 px-4 sm:px-12 flex justify-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, white 10px, white 11px)' }}></div>
+            <h1 className="text-white text-xl sm:text-3xl font-black tracking-[0.2em] sm:tracking-[0.5em] uppercase relative z-10">Proposta</h1>
+          </div>
+
+          <div className="p-4 sm:p-12 space-y-8 sm:space-y-12">
+            {/* Block 1: Client & Project */}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              <div className="space-y-4 col-span-full md:col-span-1">
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Cliente:</label>
+                  <input 
+                    type="text" 
+                    name="cliente"
+                    value={data.cliente}
+                    onChange={handleChange}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                  />
+                </div>
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Renda:</label>
+                  <div className="flex-1 flex items-center gap-1">
+                    <span className="text-gray-500 text-sm">R$</span>
+                    <input 
+                      type="text" 
+                      name="renda"
+                      value={formatDisplay(data.renda)}
+                      onChange={handleChange}
+                      className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Empreendimento:</label>
+                  <input 
+                    type="text" 
+                    list="empreendimentos-list"
+                    name="empreendimento"
+                    value={data.empreendimento}
+                    onChange={handleEmpreendimentoChange}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                  />
+                  <datalist id="empreendimentos-list">
+                    {Object.keys(EMPREENDIMENTOS).map(emp => (
+                      <option key={emp} value={emp} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Unidade:</label>
+                  <input 
+                    type="text" 
+                    name="unidade"
+                    value={data.unidade}
+                    onChange={handleChange}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                  />
+                </div>
+                <div className="flex items-start gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit mt-1">Observações:</label>
+                  <textarea 
+                    name="observacoes"
+                    value={data.observacoes}
+                    onChange={handleChange}
+                    rows={1}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 col-span-full md:col-span-1">
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Data:</label>
+                  <input 
+                    type="text" 
+                    name="data"
+                    value={data.data}
+                    onChange={handleChange}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                  />
+                </div>
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Data de entrega:</label>
+                  {data.dataEntrega === 'Entregue' ? (
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-gray-800 font-medium">Entregue</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setData(prev => ({ ...prev, dataEntrega: '' }))}
+                        className="text-gray-400 hover:text-gray-600 focus:outline-none print:hidden"
+                        title="Limpar"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <input 
+                      type="date" 
+                      name="dataEntrega"
+                      value={data.dataEntrega}
+                      onChange={handleChange}
+                      className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                    />
+                  )}
+                </div>
+                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Ranking:</label>
+                  <select 
+                    name="ranking"
+                    value={data.ranking}
+                    onChange={handleChange}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800 cursor-pointer"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="💎 Diamante">💎 Diamante</option>
+                    <option value="🥇 Ouro">🥇 Ouro</option>
+                    <option value="🥈 Prata">🥈 Prata</option>
+                    <option value="🥉 Bronze">🥉 Bronze</option>
+                    <option value="⚙️ Aço">⚙️ Aço</option>
+                  </select>
+                </div>
+                <div className="pt-3 flex justify-end">
+                  <a 
+                    href="https://ranking-direcional.streamlit.app/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm hover:bg-indigo-700 transition-colors print:hidden"
+                  >
+                    Consultar Ranking
+                  </a>
+                </div>
+              </div>
+            </section>
+
+            {/* Block 2: Values Table */}
+            <section className="space-y-6">
+              <h2 className="text-center text-3xl font-bold text-indigo-800">MCMV e SBPE</h2>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border-2 border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 text-sm font-black text-gray-800 uppercase tracking-widest text-center">
+                        Valor do Empreendimento
+                      </th>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <th className="border-2 border-gray-400 px-4 py-2 text-sm font-black text-gray-700 uppercase tracking-widest w-1/2">Descrição</th>
+                      <th className="border-2 border-gray-400 px-4 py-2 text-sm font-black text-gray-700 uppercase tracking-widest w-1/2">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-center font-medium">
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right w-1/2">Valor da Unidade</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="valorUnidade"
+                            value={formatDisplay(data.valorUnidade)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus de Adimplência</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="bonusAdimplencia"
+                            value={formatDisplay(data.bonusAdimplencia)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus Campanha</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="bonusCampanha"
+                            value={formatDisplay(data.bonusCampanha)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Volta ao Caixa</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="voltaAoCaixa"
+                            value={formatDisplay(data.voltaAoCaixa)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Folga de Tabela</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="folgaTabela"
+                            value={formatDisplay(data.folgaTabela)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Desconto Coordenador</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="descontoCoordenador"
+                            value={formatDisplay(data.descontoCoordenador)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50/50">
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Sinal em Dobro</td>
+                      <td className="border-2 border-gray-400 px-0 py-0">
+                        <div className="flex h-full">
+                          <div className="w-1/3 sm:w-1/4 border-r-2 border-gray-400 flex items-center justify-center bg-white">
+                            <input 
+                              type="number" 
+                              name="sinalEmDobroPorcentagem"
+                              value={data.sinalEmDobroPorcentagem || ''}
+                              onChange={handleChange}
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                            />
+                            <span className="font-bold mr-1 sm:mr-2">%</span>
+                          </div>
+                          <div className="flex-1 flex items-center justify-center font-bold text-indigo-700 text-xs sm:text-sm">
+                            {formatCurrency(sinalEmDobroResultado)}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-indigo-50">
+                      <td className="border-2 border-gray-400 px-2 py-3 sm:px-4 sm:py-4 uppercase text-[9px] sm:text-[10px] font-black leading-tight text-right">
+                        Valor da Unidade após os descontos acima
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-3 sm:px-4 sm:py-4 text-base sm:text-xl font-black text-indigo-900">
+                        {formatCurrency(valorFinal)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Tabela de Financiamento */}
+            <section className="mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
+                  <thead>
+                    <tr>
+                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                        FINANCIAMENTO
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Financiamento</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="financiamentoValor"
+                            value={formatDisplay(data.financiamentoValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Federal</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="subsidioFederalValor"
+                            value={formatDisplay(data.subsidioFederalValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Estadual</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="subsidioEstadualValor"
+                            value={formatDisplay(data.subsidioEstadualValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">FGTS</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="fgtsValor"
+                            value={formatDisplay(data.fgtsValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Valor da Parcela de Financiamento</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500 font-bold">R$</span>
+                          <input 
+                            type="text" 
+                            name="valorParcelaFinanciamentoValor"
+                            value={formatDisplay(data.valorParcelaFinanciamentoValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Tabela ATO */}
+            <section className="mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
+                  <thead>
+                    <tr>
+                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                        ATO
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Sinal Ato</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="sinalAtoValor"
+                            value={formatDisplay(data.sinalAtoValor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
+                        <input 
+                          type="date" 
+                          name="sinalAtoInfo"
+                          value={data.sinalAtoInfo}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 1</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="sinal1Valor"
+                            value={formatDisplay(data.sinal1Valor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <input 
+                          type="date" 
+                          name="sinal1Info"
+                          value={data.sinal1Info}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 2</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="sinal2Valor"
+                            value={formatDisplay(data.sinal2Valor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <input 
+                          type="date" 
+                          name="sinal2Info"
+                          value={data.sinal2Info}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 3</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="sinal3Valor"
+                            value={formatDisplay(data.sinal3Valor)}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          />
+                        </div>
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <input 
+                          type="date" 
+                          name="sinal3Info"
+                          value={data.sinal3Info}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Tabela RESTANTE ENTRADA */}
+            <section className="mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
+                  <thead>
+                    <tr>
+                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                        RESTANTE ENTRADA
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Valor Restante Entrada</td>
+                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
+                        {formatCurrency(valorRestanteEntradaCalculado)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor da Parcela</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
+                        {formatCurrency(valorParcelaCalculado)}
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <select
+                          name="valorParcelaInfo"
+                          value={data.valorParcelaInfo}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs appearance-none cursor-pointer"
+                          disabled={validParcelaDates.length === 0}
+                        >
+                          {validParcelaDates.length === 0 && (
+                            <option value="">DD/MM/AAAA</option>
+                          )}
+                          {validParcelaDates.map(opt => (
+                            <option key={opt.dateStr} value={opt.dateStr}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Quantidade de Parcelas</td>
+                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <input 
+                          type="number" 
+                          min="0"
+                          max="84"
+                          name="quantidadeParcelasValor"
+                          value={data.quantidadeParcelasValor || ''}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Disclaimer */}
+            <section className="mt-8 text-xs text-gray-500 italic space-y-1">
+              <p><strong>Avisos Importantes:</strong></p>
+              <p>1. Essa é apenas uma simulação, para valores exatos seria necessário a aprovação de crédito e inserção dos dados dentro do sistema da construtora.</p>
+              <p>2. Colocar o ranking correto é extremamente importante para a aprovação dentro da construtora.</p>
+              <p>3. Essa proposta não garante a reserva da unidade em questão.</p>
+              <p>4. Esta é uma proposta simulada com validade condicionada à política comercial do mês vigente. Os valores e condições definitivos estão sujeitos à validação e reserva oficial dentro do sistema da Direcional.</p>
+            </section>
+
+            <div className="mt-8 flex flex-col items-center gap-4 print:hidden">
+              <button 
+                onClick={handlePrint}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
+              >
+                <Printer size={24} />
+                Gerar PDF / Imprimir Agora
+              </button>
+              <p className="text-xs text-gray-400 text-center max-w-xs">
+                Dica: Se a janela de impressão não abrir, clique no botão "Abrir em Nova Aba" no topo da página.
+              </p>
+            </div>
+
+            {/* Explicação Ranking */}
+            <section className="mb-8 mt-12 page-break-before print:hidden">
+              <h2 className="text-center text-2xl font-bold text-indigo-800 mb-6">Políticas Ranking</h2>
+              
+              {rankingValidation && !rankingValidation.isValid && (
+                <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <Info className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-bold text-red-800 uppercase tracking-wider">
+                        Atenção: Plano de pagamento fora da política do ranking {data.ranking}
+                      </h3>
+                      <div className="mt-2 text-sm text-red-700 space-y-1">
+                        {!rankingValidation.ps.valid && (
+                          <p>• <strong>Pro Soluto (PS):</strong> O valor parcelado com a construtora representa {(rankingValidation.ps.current * 100).toFixed(1)}% do imóvel. O limite para este ranking é {(rankingValidation.ps.max * 100).toFixed(1)}%.</p>
+                        )}
+                        {!rankingValidation.totalComp.valid && (
+                          <p>• <strong>Comprometimento Total:</strong> A parcela do financiamento + parcela da construtora compromete {(rankingValidation.totalComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.totalComp.max * 100).toFixed(1)}%.</p>
+                        )}
+                        {!rankingValidation.constComp.valid && (
+                          <p>• <strong>Comprometimento Construtora:</strong> A parcela da construtora compromete {(rankingValidation.constComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.constComp.max * 100).toFixed(1)}%.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div className="space-y-3">
+                  {/* Diamante */}
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-blue-400 rounded-lg overflow-hidden bg-blue-50">
+                    <div className="bg-blue-100 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-blue-400 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-blue-700 sm:-rotate-90 whitespace-nowrap sm:mb-4">Diamante</span>
+                      <span className="text-xl sm:text-2xl">💎</span>
+                    </div>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 sm:px-6 gap-2 sm:gap-0">
+                      <div className="flex gap-4 sm:gap-8">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">25% PS</span>
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">84X</span>
+                      </div>
+                      <span className="text-sm sm:text-lg font-semibold text-gray-700 text-center sm:text-right">50% / 20% Comprometimento de renda</span>
+                    </div>
+                  </div>
+
+                  {/* Ouro */}
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-yellow-500 rounded-lg overflow-hidden bg-yellow-50">
+                    <div className="bg-yellow-100 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-yellow-500 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-yellow-700 sm:-rotate-90 whitespace-nowrap sm:mb-4">Ouro</span>
+                      <span className="text-xl sm:text-2xl">🥇</span>
+                    </div>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 sm:px-6 gap-2 sm:gap-0">
+                      <div className="flex gap-4 sm:gap-8">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">20% PS</span>
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">84X</span>
+                      </div>
+                      <span className="text-sm sm:text-lg font-semibold text-gray-700 text-center sm:text-right">50% / 20% Comprometimento de renda</span>
+                    </div>
+                  </div>
+
+                  {/* Prata */}
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-gray-400 rounded-lg overflow-hidden bg-gray-50">
+                    <div className="bg-gray-200 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-gray-400 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-gray-600 sm:-rotate-90 whitespace-nowrap sm:mb-4">Prata</span>
+                      <span className="text-xl sm:text-2xl">🥈</span>
+                    </div>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 sm:px-6 gap-2 sm:gap-0">
+                      <div className="flex gap-4 sm:gap-8">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">18% PS</span>
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">84X</span>
+                      </div>
+                      <span className="text-sm sm:text-lg font-semibold text-gray-700 text-center sm:text-right">48% / 18% Comprometimento de renda</span>
+                    </div>
+                  </div>
+
+                  {/* Bronze */}
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-orange-400 rounded-lg overflow-hidden bg-orange-50">
+                    <div className="bg-orange-100 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-orange-400 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-orange-700 sm:-rotate-90 whitespace-nowrap sm:mb-4">Bronze</span>
+                      <span className="text-xl sm:text-2xl">🥉</span>
+                    </div>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 sm:px-6 gap-2 sm:gap-0">
+                      <div className="flex gap-4 sm:gap-8">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">15% PS</span>
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">84X</span>
+                      </div>
+                      <span className="text-sm sm:text-lg font-semibold text-gray-700 text-center sm:text-right">45% / 15% Comprometimento de renda</span>
+                    </div>
+                  </div>
+
+                  {/* Aço */}
+                  <div className="flex items-stretch border-2 border-slate-400 rounded-lg overflow-hidden bg-slate-50">
+                    <div className="bg-slate-200 w-16 flex flex-col items-center justify-center p-2 border-r-2 border-slate-400">
+                      <span className="text-xs font-bold text-slate-700 -rotate-90 whitespace-nowrap mb-4">Aço</span>
+                      <span className="text-2xl">⚙️</span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-between p-4 px-6">
+                      <span className="text-xl font-bold text-gray-800">12% PS</span>
+                      <span className="text-xl font-bold text-gray-800">84X</span>
+                      <span className="text-lg font-semibold text-gray-700">40% / 10% Comprometimento de renda</span>
+                    </div>
+                  </div>
+
+                  {/* Não Elegível */}
+                  <div className="flex items-stretch border-2 border-red-400 rounded-lg overflow-hidden bg-red-50">
+                    <div className="bg-red-100 w-16 flex flex-col items-center justify-center p-2 border-r-2 border-red-400">
+                      <span className="text-xs font-bold text-red-700 -rotate-90 whitespace-nowrap mb-6">Não elegível</span>
+                      <span className="text-2xl">🚫</span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center p-4 px-6">
+                      <span className="text-xl font-bold text-gray-800">Não elegível</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Footer Branding */}
+          <footer className="p-12 pt-0 flex justify-center opacity-30 grayscale pointer-events-none">
+             <div className="flex items-center gap-12">
+              <span className="text-xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
+              <span className="text-xl font-black text-indigo-900 tracking-tighter">RIVA</span>
+            </div>
+            <div className="text-xs text-gray-400 font-medium">
+              By Emanuel Santiago
+            </div>
+          </footer>
+        </div>
+      </main>
+
+      {/* Google AdSense Footer Placeholder */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 text-center print:hidden z-40">
+        <div className="max-w-4xl mx-auto h-16 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs uppercase tracking-widest">
+          Publicidade Google AdSense
+        </div>
+      </div>
+
+      {/* Popup Banner */}
+      <AnimatePresence>
+        {showPopup && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 print:hidden"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden relative"
+            >
+              <button 
+                onClick={() => setShowPopup(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="p-8 text-center space-y-6">
+                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto">
+                  <Info size={32} />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Oferta Especial Direcional/Riva</h2>
+                <p className="text-gray-600">
+                  Confira as melhores condições para o seu novo imóvel. Utilize nossa ferramenta para simular as melhores propostas e garantir o fechamento do negócio!
+                </p>
+                <div className="aspect-video bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border border-dashed border-gray-300">
+                  Banner Publicitário Grande
+                </div>
+                <button 
+                  onClick={() => setShowPopup(false)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors"
+                >
+                  Continuar usando a ferramenta
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

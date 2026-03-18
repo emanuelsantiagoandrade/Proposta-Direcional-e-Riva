@@ -1,0 +1,5 @@
+{
+  "name": "Sistema de Propostas Direcional/Riva",
+  "description": "Gerador de propostas imobiliárias com cálculos automáticos de descontos e sinal em dobro.",
+  "requestFramePermissions": []
+}
