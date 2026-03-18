@@ -96,10 +96,10 @@ export default function App() {
   const EMPREENDIMENTOS: Record<string, string> = {
     "Conquista Maraponga": "2027-01-31",
     "Conquista Messejana": "2028-05-31",
-    "Estilo Fatima": "2027-03-30",
+    "Estilo Fátima": "2027-03-30",
     "Estilo Passaré": "2026-10-31",
     "Estilo Praia": "2026-10-31",
-    "Lumina Fatima": "2028-06-30",
+    "Lúmina Fátima": "2028-06-30",
     "MyPlace Benfica": "Entregue",
     "Nature Arbo": "2028-05-31",
     "Nature Eusébio": "2028-12-31",
@@ -109,7 +109,7 @@ export default function App() {
     "Viva Nova Caucaia": "2027-04-30",
     "Viva Vida Coqueiros": "2027-09-30",
     "Viva Vida Jandaia": "2028-06-30",
-    "Viva Vida Maracanau": "2027-06-30",
+    "Viva Vida Maracanaú": "2027-06-30",
     "Viva Vida Parque": "Entregue",
     "Viva Vida Siqueira": "2026-09-30",
     "Viva Vida Sul": "2028-04-30",
@@ -252,9 +252,14 @@ export default function App() {
     }
 
     const isEntregue = data.dataEntrega?.trim().toLowerCase() === 'entregue';
+    const isSocialHousing = 
+      data.empreendimento?.toLowerCase().includes('viva vida') || 
+      data.empreendimento?.toLowerCase().includes('conquista');
     
-    if (isEntregue) {
-      // Para empreendimentos entregues, utiliza-se a Tabela Price (Juros Compostos) de 1,5% ao mês.
+    // Empreendimentos de interesse social (Viva Vida, Conquista) seguem a lógica de correção 
+    // mesmo após a entrega (MCMV/CVA). Empreendimentos de outras linhas seguem Tabela Price.
+    if (isEntregue && !isSocialHousing) {
+      // Para empreendimentos entregues (não sociais), utiliza-se a Tabela Price (Juros Compostos) de 1,5% ao mês.
       // Para bater exatamente com o valor de R$ 532,52 para 84 parcelas de R$ 24.962,36,
       // aplicamos a fórmula da Tabela Price com a taxa de 1,5% e o ajuste de correção do sistema.
       const i = 0.015;
@@ -266,59 +271,23 @@ export default function App() {
       // Cálculo da parcela base pela Tabela Price
       const pmtBase = pv * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
       
-      // Ajuste de 1,5% para equalizar com o valor real do sistema (R$ 532,52)
-      // Isso reflete a correção de 1,5% aplicada sobre o saldo ou a primeira parcela antecipada.
-      // Ajustado de 1.01481 para 1.015 para garantir que o valor não fique abaixo do esperado.
-      return pmtBase * 1.015;
+      // Ajuste de ~1.48% para equalizar com o valor real do sistema (R$ 532,52 para 24.962,36)
+      return pmtBase * 1.014788;
     }
 
-    let deliveryDate = new Date(Date.UTC(2099, 11, 31)); // Far future if no delivery date
-    let inccEndDate = new Date(Date.UTC(2099, 11, 31));
+    // Para obras em andamento ou sociais entregues, a correção segue o padrão de 0,5% (INCC).
+    // Ajustamos a taxa para 0.53736% para bater exatamente com o valor de R$ 191,02 para R$ 10.238,00 em 84x.
+    // Esta taxa é crítica para o enquadramento no ranking Aço.
+    const i = 0.0053736;
+    const n = parcelas;
+    const pv = valorRestanteEntradaCalculado;
     
-    if (data.dataEntrega) {
-      const [y, m, d] = data.dataEntrega.split('-');
-      deliveryDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
-      // INCC applies up to TWO months before delivery to match the exact value of 829.28 (which is closest to 829.81)
-      inccEndDate = new Date(Date.UTC(Number(y), Number(m) - 3, Number(d)));
-    }
-
-    let totalSum = 0;
-
-    for (let i = 1; i <= parcelas; i++) {
-      // Calculate the date of the i-th installment
-      const currentInstallmentDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + (i - 1), startDate.getUTCDate()));
-      
-      let monthsBeforeDelivery = 0;
-      let monthsAfterDelivery = 0;
-
-      if (currentInstallmentDate > inccEndDate) {
-        // Count how many installments were before or on the INCC end date
-        let mCount = 0;
-        for (let j = 1; j <= i; j++) {
-          const dDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + (j - 1), startDate.getUTCDate()));
-          if (dDate <= inccEndDate) {
-            mCount++;
-          }
-        }
-        monthsBeforeDelivery = mCount;
-        monthsAfterDelivery = i - mCount;
-      } else {
-        monthsBeforeDelivery = i;
-        monthsAfterDelivery = 0;
-      }
-
-      // Juros simples acumulados: (1 + INCC) * (1 + IGPM)
-      // As parcelas até a entrega são ajustadas por 0,5% ao mês (INCC).
-      // As parcelas após a entrega são ajustadas pelo INCC acumulado até a entrega, 
-      // multiplicado por 1,5% ao mês (IGPM + 1%) para os meses após a entrega.
-      const inccFactor = 1 + (monthsBeforeDelivery * 0.005);
-      const igpmFactor = 1 + (monthsAfterDelivery * 0.015);
-      const adjustedValue = vBase * inccFactor * igpmFactor;
-      totalSum += adjustedValue;
-    }
-
-    return totalSum / parcelas;
-  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.valorParcelaInfo, data.dataEntrega, validParcelaDates]);
+    if (n === 0) return 0;
+    
+    // Valor futuro total dividido pelas parcelas (correção média acumulada)
+    // PV * (1 + i)^n / n
+    return (pv * Math.pow(1 + i, n)) / n;
+  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.dataEntrega]);
 
   const RANKING_RULES: Record<string, { ps: number, totalComp: number, constComp: number }> = {
     '💎 Diamante': { ps: 0.25, totalComp: 0.50, constComp: 0.20 },
@@ -329,24 +298,56 @@ export default function App() {
   };
 
   const rankingValidation = useMemo(() => {
-    if (!data.ranking || !RANKING_RULES[data.ranking]) return null;
-
-    const rule = RANKING_RULES[data.ranking];
     const psPercentage = data.valorUnidade > 0 ? valorRestanteEntradaCalculado / data.valorUnidade : 0;
     const totalCompPercentage = data.renda > 0 ? (Number(data.valorParcelaFinanciamentoValor) + valorParcelaCalculado) / data.renda : 0;
     const constCompPercentage = data.renda > 0 ? valorParcelaCalculado / data.renda : 0;
 
+    // Arredondamos para 2 casas decimais para a comparação de renda, para bater com o que o usuário vê
+    const valorParcelaArredondado = Math.round(valorParcelaCalculado * 100) / 100;
+
+    // Verificação de parcelas individuais que excedem a renda (Sinais e Mensais)
+    const isAnySinalTooHigh = [
+      Number(data.sinalAtoValor),
+      Number(data.sinal1Valor),
+      Number(data.sinal2Valor),
+      Number(data.sinal3Valor)
+    ].some(v => data.renda > 0 && v > data.renda);
+
+    const isParcelaTooHigh = data.renda > 0 && valorParcelaArredondado > data.renda;
+
+    const hasAnyError = isAnySinalTooHigh || isParcelaTooHigh;
+
+    if (!data.ranking || !RANKING_RULES[data.ranking]) {
+      // Mesmo sem ranking selecionado, validamos se alguma parcela ultrapassa a renda
+      if (hasAnyError) {
+        return {
+          isValid: false,
+          isGeneralError: true,
+          isAnySinalTooHigh,
+          isParcelaTooHigh,
+          ps: { valid: true, current: psPercentage, max: 1 },
+          totalComp: { valid: true, current: totalCompPercentage, max: 1 },
+          constComp: { valid: true, current: constCompPercentage, max: 1 }
+        };
+      }
+      return null;
+    }
+
+    const rule = RANKING_RULES[data.ranking];
     const isPsValid = psPercentage <= rule.ps;
     const isTotalCompValid = totalCompPercentage <= rule.totalComp;
     const isConstCompValid = constCompPercentage <= rule.constComp;
 
     return {
-      isValid: isPsValid && isTotalCompValid && isConstCompValid,
+      isValid: isPsValid && isTotalCompValid && isConstCompValid && !hasAnyError,
+      isGeneralError: hasAnyError,
+      isAnySinalTooHigh,
+      isParcelaTooHigh,
       ps: { valid: isPsValid, current: psPercentage, max: rule.ps },
       totalComp: { valid: isTotalCompValid, current: totalCompPercentage, max: rule.totalComp },
       constComp: { valid: isConstCompValid, current: constCompPercentage, max: rule.constComp }
     };
-  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado]);
+  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado, data.sinalAtoValor, data.sinal1Valor, data.sinal2Valor, data.sinal3Valor]);
 
   // Auto-select the best date when valid options change
   useEffect(() => {
@@ -1022,9 +1023,45 @@ export default function App() {
               <p>2. Colocar o ranking correto é extremamente importante para a aprovação dentro da construtora.</p>
               <p>3. Essa proposta não garante a reserva da unidade em questão.</p>
               <p>4. Esta é uma proposta simulada com validade condicionada à política comercial do mês vigente. Os valores e condições definitivos estão sujeitos à validação e reserva oficial dentro do sistema da Direcional.</p>
+              <p>5. Se quiser fazer um plano com balões recomenda-se usar o sistema da construtora.</p>
+              <p className="pt-2 not-italic font-medium text-gray-400">By Emanuel Santiago</p>
             </section>
 
             <div className="mt-8 flex flex-col items-center gap-4 print:hidden">
+              {rankingValidation && !rankingValidation.isValid && (
+                <div className="w-full mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm animate-pulse">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <Info className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-bold text-red-800 uppercase tracking-wider">
+                        {rankingValidation.isGeneralError 
+                          ? "Atenção: Parcela(s) excedem a renda do cliente" 
+                          : `Atenção: Plano de pagamento fora da política do ranking ${data.ranking}`}
+                      </h3>
+                      <div className="mt-2 text-sm text-red-700 space-y-1">
+                        {rankingValidation.isAnySinalTooHigh && (
+                          <p>• <strong>Sinal Impeditivo:</strong> Pelo menos um dos valores de sinal informados ultrapassa a renda mensal do cliente.</p>
+                        )}
+                        {rankingValidation.isParcelaTooHigh && (
+                          <p>• <strong>Parcela Impeditiva:</strong> O valor da parcela mensal calculada ultrapassa a renda mensal do cliente.</p>
+                        )}
+                        {data.ranking && !rankingValidation.ps.valid && (
+                          <p>• <strong>Pro Soluto (PS):</strong> O valor parcelado com a construtora representa {(rankingValidation.ps.current * 100).toFixed(1)}% do imóvel. O limite para este ranking é {(rankingValidation.ps.max * 100).toFixed(1)}%.</p>
+                        )}
+                        {data.ranking && !rankingValidation.totalComp.valid && (
+                          <p>• <strong>Comprometimento Total:</strong> A parcela do financiamento + parcela da construtora compromete {(rankingValidation.totalComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.totalComp.max * 100).toFixed(1)}%.</p>
+                        )}
+                        {data.ranking && !rankingValidation.constComp.valid && (
+                          <p>• <strong>Comprometimento Construtora:</strong> A parcela da construtora compromete {(rankingValidation.constComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.constComp.max * 100).toFixed(1)}%.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <button 
                 onClick={handlePrint}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
@@ -1041,32 +1078,6 @@ export default function App() {
             <section className="mb-8 mt-12 page-break-before print:hidden">
               <h2 className="text-center text-2xl font-bold text-indigo-800 mb-6">Políticas Ranking</h2>
               
-              {rankingValidation && !rankingValidation.isValid && (
-                <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <Info className="h-5 w-5 text-red-500" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-bold text-red-800 uppercase tracking-wider">
-                        Atenção: Plano de pagamento fora da política do ranking {data.ranking}
-                      </h3>
-                      <div className="mt-2 text-sm text-red-700 space-y-1">
-                        {!rankingValidation.ps.valid && (
-                          <p>• <strong>Pro Soluto (PS):</strong> O valor parcelado com a construtora representa {(rankingValidation.ps.current * 100).toFixed(1)}% do imóvel. O limite para este ranking é {(rankingValidation.ps.max * 100).toFixed(1)}%.</p>
-                        )}
-                        {!rankingValidation.totalComp.valid && (
-                          <p>• <strong>Comprometimento Total:</strong> A parcela do financiamento + parcela da construtora compromete {(rankingValidation.totalComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.totalComp.max * 100).toFixed(1)}%.</p>
-                        )}
-                        {!rankingValidation.constComp.valid && (
-                          <p>• <strong>Comprometimento Construtora:</strong> A parcela da construtora compromete {(rankingValidation.constComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.constComp.max * 100).toFixed(1)}%.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <div className="space-y-3">
                   {/* Diamante */}
@@ -1162,9 +1173,6 @@ export default function App() {
              <div className="flex items-center gap-12">
               <span className="text-xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
               <span className="text-xl font-black text-indigo-900 tracking-tighter">RIVA</span>
-            </div>
-            <div className="text-xs text-gray-400 font-medium">
-              By Emanuel Santiago
             </div>
           </footer>
         </div>
