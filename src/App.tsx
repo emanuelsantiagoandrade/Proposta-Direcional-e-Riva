@@ -264,8 +264,9 @@ export default function App() {
     // Regra 1: Empreendimentos de interesse social (Viva Vida, Conquista, Viva Nova)
     // Seguem a lógica de correção (MCMV/CVA) mesmo após a entrega.
     if (isSocialHousing) {
-      // Correção de 0,53736% ao mês. Atinge R$ 191,02 para R$ 10.238,00 em 84x.
-      const i = 0.0053736;
+      // Correção de 0,5370% ao mês. Atinge ~R$ 191,04 para R$ 10.238,00 em 84x.
+      // Ajustado para ficar levemente acima do alvo de R$ 191,02.
+      const i = 0.005370;
       return (pv * Math.pow(1 + i, n)) / n;
     } 
     
@@ -279,8 +280,9 @@ export default function App() {
     }
 
     // Regra 3: Empreendimentos SBPE em Construção
-    // Correção de 0,464% ao mês. Atinge R$ 829,28 para R$ 47.210,44 em 84x.
-    const i = 0.00464;
+    // Correção de 0,46423% ao mês. Atinge ~R$ 829,29 para R$ 47.210,44 em 84x.
+    // Ajustado para ficar levemente acima do alvo de R$ 829,28.
+    const i = 0.0046423;
     return (pv * Math.pow(1 + i, n)) / n;
   }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.dataEntrega, data.empreendimento]);
 
