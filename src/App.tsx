@@ -253,27 +253,42 @@ export default function App() {
 
     const isEntregue = data.dataEntrega?.trim().toLowerCase() === 'entregue';
     const isSocialHousing = 
+      data.subsidioFederalValor > 0 ||
+      data.subsidioEstadualValor > 0 ||
       data.empreendimento?.toLowerCase().includes('viva vida') || 
       data.empreendimento?.toLowerCase().includes('viva nova') || 
-      data.empreendimento?.toLowerCase().includes('conquista');
+      data.empreendimento?.toLowerCase().includes('conquista') ||
+      data.empreendimento?.toLowerCase().includes('mcmv') ||
+      data.empreendimento?.toLowerCase().includes('cva');
     
     const n = parcelas;
     const pv = valorRestanteEntradaCalculado;
     if (n === 0) return 0;
 
-    // Regra 1: Empreendimentos de interesse social (Viva Vida, Conquista, Viva Nova)
+    // Ajuste de taxa baseado no Ranking (Baseline: Ouro)
+    // Ouro é a base, Aço é +0.153%, Diamante é -0.051%
+    const rankingAdjustments: Record<string, number> = {
+      '💎 Diamante': -0.00051,
+      '🥇 Ouro': 0,
+      '🥈 Prata': 0.00051,
+      '🥉 Bronze': 0.00102,
+      '⚙️ Aço': 0.00153,
+    };
+    const adj = rankingAdjustments[data.ranking || '🥇 Ouro'] || 0;
+
+    // Regra 1: Empreendimentos de interesse social (MCMV/CVA/Viva Vida/Conquista)
     // Seguem a lógica de correção (MCMV/CVA).
     if (isSocialHousing) {
       if (isEntregue) {
-        // Social Entregue: Correção de ~0,537% ao mês. 
-        // Atinge ~R$ 191,04 para R$ 10.238,00 em 84x.
-        const i = 0.005370;
+        // Social Entregue: Base Ouro ~0,542% ao mês.
+        // Adicionamos uma margem de segurança maior
+        const i = 0.00542 + adj;
         return (pv * Math.pow(1 + i, n)) / n;
       } else {
-        // Social em Construção: Correção de ~0,6341% ao mês.
-        // Atinge ~R$ 453,97 para R$ 22.423,46 em 84x.
-        // Ajustado para garantir que fique sempre no alvo ou levemente acima (R$ 453,93).
-        const i = 0.006341;
+        // Social em Construção: Base Ouro ~0,640% ao mês.
+        // Adicionamos uma margem de segurança maior
+        // Para Aço (Ouro + 0.153%): 0.640 + 0.153 = 0.793%
+        const i = 0.00640 + adj;
         return (pv * Math.pow(1 + i, n)) / n;
       }
     } 
@@ -288,11 +303,18 @@ export default function App() {
     }
 
     // Regra 3: Empreendimentos SBPE em Construção
-    // Correção de 0,4643% ao mês. Atinge ~R$ 829,30 para R$ 47.210,44 em 84x.
-    // Ajustado para ficar levemente acima do alvo de R$ 829,28.
-    const i = 0.004643;
+    // SBPE em Construção: Base Ouro ~0,470% ao mês.
+    const i = 0.00470 + adj;
     return (pv * Math.pow(1 + i, n)) / n;
-  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.dataEntrega, data.empreendimento]);
+  }, [
+    valorRestanteEntradaCalculado, 
+    data.quantidadeParcelasValor, 
+    data.dataEntrega, 
+    data.empreendimento,
+    data.subsidioFederalValor,
+    data.subsidioEstadualValor,
+    data.ranking
+  ]);
 
   const RANKING_RULES: Record<string, { ps: number, totalComp: number, constComp: number }> = {
     '💎 Diamante': { ps: 0.25, totalComp: 0.50, constComp: 0.20 },
@@ -334,10 +356,36 @@ export default function App() {
     const isTotalCompValid = totalCompPercentage <= rule.totalComp;
     const isConstCompValid = constCompPercentage <= rule.constComp;
 
+    // Cálculo de sugestão de aumento no Ato para enquadramento
+    let suggestedAtoIncrease = 0;
+    if (data.ranking && RANKING_RULES[data.ranking]) {
+      // 1. Limite PS
+      const targetPvPs = rule.ps * data.valorUnidade;
+      const diffPs = valorRestanteEntradaCalculado - targetPvPs;
+      if (diffPs > 0) suggestedAtoIncrease = Math.max(suggestedAtoIncrease, diffPs);
+      
+      // 2. Limites de Comprometimento (Linear com o saldo devedor)
+      if (valorRestanteEntradaCalculado > 0) {
+        const ratio = valorParcelaCalculado / valorRestanteEntradaCalculado;
+        
+        // Limite Construtora
+        const targetPvConst = (rule.constComp * data.renda) / ratio;
+        const diffConst = valorRestanteEntradaCalculado - targetPvConst;
+        if (diffConst > 0) suggestedAtoIncrease = Math.max(suggestedAtoIncrease, diffConst);
+        
+        // Limite Total
+        const targetParcelaTotal = (rule.totalComp * data.renda) - Number(data.valorParcelaFinanciamentoValor);
+        const targetPvTotal = targetParcelaTotal / ratio;
+        const diffTotal = valorRestanteEntradaCalculado - targetPvTotal;
+        if (diffTotal > 0) suggestedAtoIncrease = Math.max(suggestedAtoIncrease, diffTotal);
+      }
+    }
+
     return {
       isValid: isPsValid && isTotalCompValid && isConstCompValid && !hasAnyError,
       isGeneralError: hasAnyError,
       isParcelaTooHigh,
+      suggestedAtoIncrease: Math.ceil(suggestedAtoIncrease),
       ps: { valid: isPsValid, current: psPercentage, max: rule.ps },
       totalComp: { valid: isTotalCompValid, current: totalCompPercentage, max: rule.totalComp },
       constComp: { valid: isConstCompValid, current: constCompPercentage, max: rule.constComp }
@@ -1048,7 +1096,47 @@ export default function App() {
                         {data.ranking && !rankingValidation.constComp.valid && (
                           <p>• <strong>Comprometimento Construtora:</strong> A parcela da construtora compromete {(rankingValidation.constComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.constComp.max * 100).toFixed(1)}%.</p>
                         )}
+                        {rankingValidation.suggestedAtoIncrease > 0 && (
+                          <div className="mt-3 p-2 bg-white/50 rounded border border-red-200">
+                            <p className="text-red-900 font-bold">
+                              💡 Sugestão: Aumente o valor do ATO em pelo menos <strong>{formatCurrency(rankingValidation.suggestedAtoIncrease)}</strong> para enquadrar este plano no ranking {data.ranking}.
+                            </p>
+                          </div>
+                        )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Monitoramento de Ranking em Tempo Real */}
+              {data.ranking && (
+                <div className="w-full max-w-2xl bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                    Monitoramento de Ranking: {data.ranking}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className={`p-3 rounded-lg border ${rankingValidation.ps.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">Pro Soluto (PS)</p>
+                      <p className={`text-lg font-black ${rankingValidation.ps.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {(rankingValidation.ps.current * 100).toFixed(1)}%
+                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.ps.max * 100}%</span>
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-lg border ${rankingValidation.totalComp.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">Comp. Total</p>
+                      <p className={`text-lg font-black ${rankingValidation.totalComp.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {(rankingValidation.totalComp.current * 100).toFixed(1)}%
+                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.totalComp.max * 100}%</span>
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-lg border ${rankingValidation.constComp.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">Comp. Construtora</p>
+                      <p className={`text-lg font-black ${rankingValidation.constComp.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {(rankingValidation.constComp.current * 100).toFixed(1)}%
+                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.constComp.max * 100}%</span>
+                      </p>
                     </div>
                   </div>
                 </div>
