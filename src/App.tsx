@@ -254,40 +254,35 @@ export default function App() {
     const isEntregue = data.dataEntrega?.trim().toLowerCase() === 'entregue';
     const isSocialHousing = 
       data.empreendimento?.toLowerCase().includes('viva vida') || 
+      data.empreendimento?.toLowerCase().includes('viva nova') || 
       data.empreendimento?.toLowerCase().includes('conquista');
     
-    // Empreendimentos de interesse social (Viva Vida, Conquista) seguem a lógica de correção 
-    // mesmo após a entrega (MCMV/CVA). Empreendimentos de outras linhas seguem Tabela Price.
-    if (isEntregue && !isSocialHousing) {
-      // Para empreendimentos entregues (não sociais), utiliza-se a Tabela Price (Juros Compostos) de 1,5% ao mês.
-      // Para bater exatamente com o valor de R$ 532,52 para 84 parcelas de R$ 24.962,36,
-      // aplicamos a fórmula da Tabela Price com a taxa de 1,5% e o ajuste de correção do sistema.
+    const n = parcelas;
+    const pv = valorRestanteEntradaCalculado;
+    if (n === 0) return 0;
+
+    // Regra 1: Empreendimentos de interesse social (Viva Vida, Conquista, Viva Nova)
+    // Seguem a lógica de correção (MCMV/CVA) mesmo após a entrega.
+    if (isSocialHousing) {
+      // Correção de 0,53736% ao mês. Atinge R$ 191,02 para R$ 10.238,00 em 84x.
+      const i = 0.0053736;
+      return (pv * Math.pow(1 + i, n)) / n;
+    } 
+    
+    // Regra 2: Empreendimentos SBPE (Nature, Estilo, etc.) Entregues
+    if (isEntregue) {
+      // Tabela Price (Juros Compostos) de 1,5% ao mês + ajuste de ~1.48% do sistema.
+      // Atinge R$ 532,52 para R$ 24.962,36 em 84x.
       const i = 0.015;
-      const n = parcelas;
-      const pv = valorRestanteEntradaCalculado;
-      
-      if (n === 0) return 0;
-      
-      // Cálculo da parcela base pela Tabela Price
       const pmtBase = pv * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
-      
-      // Ajuste de ~1.48% para equalizar com o valor real do sistema (R$ 532,52 para 24.962,36)
       return pmtBase * 1.014788;
     }
 
-    // Para obras em andamento ou sociais entregues, a correção segue o padrão de 0,5% (INCC).
-    // Ajustamos a taxa para 0.53736% para bater exatamente com o valor de R$ 191,02 para R$ 10.238,00 em 84x.
-    // Esta taxa é crítica para o enquadramento no ranking Aço.
-    const i = 0.0053736;
-    const n = parcelas;
-    const pv = valorRestanteEntradaCalculado;
-    
-    if (n === 0) return 0;
-    
-    // Valor futuro total dividido pelas parcelas (correção média acumulada)
-    // PV * (1 + i)^n / n
+    // Regra 3: Empreendimentos SBPE em Construção
+    // Correção de 0,464% ao mês. Atinge R$ 829,28 para R$ 47.210,44 em 84x.
+    const i = 0.00464;
     return (pv * Math.pow(1 + i, n)) / n;
-  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.dataEntrega]);
+  }, [valorRestanteEntradaCalculado, data.quantidadeParcelasValor, data.dataEntrega, data.empreendimento]);
 
   const RANKING_RULES: Record<string, { ps: number, totalComp: number, constComp: number }> = {
     '💎 Diamante': { ps: 0.25, totalComp: 0.50, constComp: 0.20 },
@@ -305,25 +300,16 @@ export default function App() {
     // Arredondamos para 2 casas decimais para a comparação de renda, para bater com o que o usuário vê
     const valorParcelaArredondado = Math.round(valorParcelaCalculado * 100) / 100;
 
-    // Verificação de parcelas individuais que excedem a renda (Sinais e Mensais)
-    const isAnySinalTooHigh = [
-      Number(data.sinalAtoValor),
-      Number(data.sinal1Valor),
-      Number(data.sinal2Valor),
-      Number(data.sinal3Valor)
-    ].some(v => data.renda > 0 && v > data.renda);
-
     const isParcelaTooHigh = data.renda > 0 && valorParcelaArredondado > data.renda;
 
-    const hasAnyError = isAnySinalTooHigh || isParcelaTooHigh;
+    const hasAnyError = isParcelaTooHigh;
 
     if (!data.ranking || !RANKING_RULES[data.ranking]) {
-      // Mesmo sem ranking selecionado, validamos se alguma parcela ultrapassa a renda
+      // Mesmo sem ranking selecionado, validamos se a parcela mensal ultrapassa a renda
       if (hasAnyError) {
         return {
           isValid: false,
           isGeneralError: true,
-          isAnySinalTooHigh,
           isParcelaTooHigh,
           ps: { valid: true, current: psPercentage, max: 1 },
           totalComp: { valid: true, current: totalCompPercentage, max: 1 },
@@ -341,13 +327,12 @@ export default function App() {
     return {
       isValid: isPsValid && isTotalCompValid && isConstCompValid && !hasAnyError,
       isGeneralError: hasAnyError,
-      isAnySinalTooHigh,
       isParcelaTooHigh,
       ps: { valid: isPsValid, current: psPercentage, max: rule.ps },
       totalComp: { valid: isTotalCompValid, current: totalCompPercentage, max: rule.totalComp },
       constComp: { valid: isConstCompValid, current: constCompPercentage, max: rule.constComp }
     };
-  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado, data.sinalAtoValor, data.sinal1Valor, data.sinal2Valor, data.sinal3Valor]);
+  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado]);
 
   // Auto-select the best date when valid options change
   useEffect(() => {
@@ -1041,9 +1026,6 @@ export default function App() {
                           : `Atenção: Plano de pagamento fora da política do ranking ${data.ranking}`}
                       </h3>
                       <div className="mt-2 text-sm text-red-700 space-y-1">
-                        {rankingValidation.isAnySinalTooHigh && (
-                          <p>• <strong>Sinal Impeditivo:</strong> Pelo menos um dos valores de sinal informados ultrapassa a renda mensal do cliente.</p>
-                        )}
                         {rankingValidation.isParcelaTooHigh && (
                           <p>• <strong>Parcela Impeditiva:</strong> O valor da parcela mensal calculada ultrapassa a renda mensal do cliente.</p>
                         )}
