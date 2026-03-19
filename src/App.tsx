@@ -93,6 +93,9 @@ export default function App() {
     valorParcelaValor: 0,
   });
 
+  const [printCount, setPrintCount] = useState(0);
+  const [showAdPopup, setShowAdPopup] = useState(false);
+
   const EMPREENDIMENTOS: Record<string, string> = {
     "Conquista Maraponga": "2027-01-31",
     "Conquista Messejana": "2028-05-31",
@@ -113,7 +116,7 @@ export default function App() {
     "Viva Vida Parque": "Entregue",
     "Viva Vida Siqueira": "2026-09-30",
     "Viva Vida Sul": "2028-04-30",
-    "Viva Vida Tropical": "2026-03-31"
+    "Viva Vida Tropical": "Entregue"
   };
 
   const handleEmpreendimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,8 +238,6 @@ export default function App() {
     const parcelas = Number(data.quantidadeParcelasValor) || 0;
     if (parcelas <= 0) return 0;
     
-    const vBase = valorRestanteEntradaCalculado / parcelas;
-    
     // Determine the start date of the installments
     let startDateStr = data.valorParcelaInfo;
     if (!startDateStr && validParcelaDates.length > 0) {
@@ -252,68 +253,62 @@ export default function App() {
     }
 
     const isEntregue = data.dataEntrega?.trim().toLowerCase() === 'entregue';
-    const isSocialHousing = 
-      data.subsidioFederalValor > 0 ||
-      data.subsidioEstadualValor > 0 ||
-      data.empreendimento?.toLowerCase().includes('viva vida') || 
-      data.empreendimento?.toLowerCase().includes('viva nova') || 
-      data.empreendimento?.toLowerCase().includes('conquista') ||
-      data.empreendimento?.toLowerCase().includes('mcmv') ||
-      data.empreendimento?.toLowerCase().includes('cva');
     
     const n = parcelas;
     const pv = valorRestanteEntradaCalculado;
     if (n === 0) return 0;
 
-    // Ajuste de taxa baseado no Ranking (Baseline: Ouro)
-    // Ouro é a base, Aço é +0.153%, Diamante é -0.051%
-    const rankingAdjustments: Record<string, number> = {
-      '💎 Diamante': -0.00051,
-      '🥇 Ouro': 0,
-      '🥈 Prata': 0.00051,
-      '🥉 Bronze': 0.00102,
-      '⚙️ Aço': 0.00153,
-    };
-    const adj = rankingAdjustments[data.ranking || '🥇 Ouro'] || 0;
+    // Taxas base
+    const rPre = 0.005; // 0.5% ao mês
+    const rPost = 0.015; // 1.5% ao mês
 
-    // Regra 1: Empreendimentos de interesse social (MCMV/CVA/Viva Vida/Conquista)
-    // Seguem a lógica de correção (MCMV/CVA).
-    if (isSocialHousing) {
-      if (isEntregue) {
-        // Social Entregue: Base Ouro ~0,542% ao mês.
-        // Adicionamos uma margem de segurança maior
-        const i = 0.00542 + adj;
-        return (pv * Math.pow(1 + i, n)) / n;
-      } else {
-        // Social em Construção: Base Ouro ~0,640% ao mês.
-        // Adicionamos uma margem de segurança maior
-        // Para Aço (Ouro + 0.153%): 0.640 + 0.153 = 0.793%
-        const i = 0.00640 + adj;
-        return (pv * Math.pow(1 + i, n)) / n;
-      }
-    } 
-    
-    // Regra 2: Empreendimentos SBPE (Nature, Estilo, etc.) Entregues
-    if (isEntregue) {
-      // Tabela Price (Juros Compostos) de 1,5% ao mês + ajuste de ~1.48% do sistema.
-      // Atinge R$ 532,52 para R$ 24.962,36 em 84x.
-      const i = 0.015;
-      const pmtBase = pv * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
-      return pmtBase * 1.014788;
+    // Carência
+    let simDate = new Date();
+    if (data.sinalAtoInfo) {
+      const [y, m, d] = data.sinalAtoInfo.split('-').map(Number);
+      simDate = new Date(Date.UTC(y, m - 1, d));
+    }
+    const simMonth = simDate.getUTCFullYear() * 12 + simDate.getUTCMonth();
+    const firstInstMonth = startDate.getUTCFullYear() * 12 + startDate.getUTCMonth();
+    const carencia = Math.max(0, firstInstMonth - simMonth);
+
+    // Saldo corrigido com carência (sempre 0.5% conforme regra)
+    const pvCarencia = pv * Math.pow(1 + rPre, carencia);
+
+    // Índice do mês de entrega em relação à 1ª parcela
+    let deliveryIndex = Infinity;
+    if (!isEntregue && data.dataEntrega) {
+      const [ey, em] = data.dataEntrega.split('-').map(Number);
+      const absDeliveryMonth = ey * 12 + (em - 1);
+      deliveryIndex = absDeliveryMonth - firstInstMonth + 1;
+    } else if (isEntregue) {
+      deliveryIndex = 1; // Já entregue, todas são pós
     }
 
-    // Regra 3: Empreendimentos SBPE em Construção
-    // SBPE em Construção: Base Ouro ~0,470% ao mês.
-    const i = 0.00470 + adj;
-    return (pv * Math.pow(1 + i, n)) / n;
+    // Cálculo da parcela fixa equivalente (PMT) - Tabela Price
+    let sumDiscountFactors = 0;
+    
+    for (let k = 1; k <= n; k++) {
+      let discountFactor = 1;
+      
+      for (let i = 1; i <= k; i++) {
+        const rate = i >= deliveryIndex ? rPost : rPre;
+        discountFactor /= (1 + rate);
+      }
+      
+      sumDiscountFactors += discountFactor;
+    }
+
+    const pmt = pvCarencia / sumDiscountFactors;
+    
+    return pmt;
   }, [
     valorRestanteEntradaCalculado, 
     data.quantidadeParcelasValor, 
     data.dataEntrega, 
-    data.empreendimento,
-    data.subsidioFederalValor,
-    data.subsidioEstadualValor,
-    data.ranking
+    data.sinalAtoInfo,
+    validParcelaDates,
+    data.valorParcelaInfo
   ]);
 
   const RANKING_RULES: Record<string, { ps: number, totalComp: number, constComp: number }> = {
@@ -462,17 +457,27 @@ export default function App() {
     }).format(value);
   };
 
-  const handlePrint = () => {
+  const executePrint = () => {
     try {
       window.focus();
       if (window.print) {
         window.print();
       } else {
-        // Fallback for very specific environments
         document.execCommand('print', false, null);
       }
     } catch (e) {
       console.error("Erro ao imprimir:", e);
+    }
+  };
+
+  const handlePrint = () => {
+    const newCount = printCount + 1;
+    setPrintCount(newCount);
+    
+    if (newCount % 5 === 0) {
+      setShowAdPopup(true);
+    } else {
+      executePrint();
     }
   };
 
@@ -660,7 +665,7 @@ export default function App() {
                 <table className="w-full border-collapse border-2 border-gray-400">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 text-sm font-black text-gray-800 uppercase tracking-widest text-center">
+                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 text-sm font-black text-white bg-[#002598] uppercase tracking-widest text-center">
                         Valor do Empreendimento
                       </th>
                     </tr>
@@ -780,7 +785,7 @@ export default function App() {
                         </div>
                       </td>
                     </tr>
-                    <tr className="bg-indigo-50">
+                    <tr className="bg-white">
                       <td className="border-2 border-gray-400 px-2 py-3 sm:px-4 sm:py-4 uppercase text-[9px] sm:text-[10px] font-black leading-tight text-right">
                         Valor da Unidade após os descontos acima
                       </td>
@@ -799,7 +804,7 @@ export default function App() {
                 <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
                   <thead>
                     <tr>
-                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                      <th colSpan={2} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
                         FINANCIAMENTO
                       </th>
                     </tr>
@@ -891,7 +896,7 @@ export default function App() {
                 <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
                   <thead>
                     <tr>
-                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
                         ATO
                       </th>
                     </tr>
@@ -1004,7 +1009,7 @@ export default function App() {
                 <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
                   <thead>
                     <tr>
-                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold">
+                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
                         RESTANTE ENTRADA
                       </th>
                     </tr>
@@ -1042,7 +1047,7 @@ export default function App() {
                     </tr>
                     <tr>
                       <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Quantidade de Parcelas</td>
-                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 relative">
                         <input 
                           type="number" 
                           min="0"
@@ -1050,7 +1055,8 @@ export default function App() {
                           name="quantidadeParcelasValor"
                           value={data.quantidadeParcelasValor || ''}
                           onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                          placeholder="Escreva quantas parcelas: 0 a 84 x "
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs"
                         />
                       </td>
                     </tr>
@@ -1109,34 +1115,55 @@ export default function App() {
                 </div>
               )}
 
-              {/* Monitoramento de Ranking em Tempo Real */}
+              {/* Monitoramento de Ranking em Tempo Real - Reforçado */}
               {data.ranking && (
-                <div className="w-full max-w-2xl bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                    Monitoramento de Ranking: {data.ranking}
-                  </h4>
+                <div className="w-full max-w-2xl bg-indigo-50 p-6 rounded-2xl shadow-md border-2 border-indigo-200 mb-6 transform hover:scale-[1.02] transition-transform">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-black text-indigo-900 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-indigo-600 animate-pulse" />
+                      Monitoramento em Tempo Real: {data.ranking}
+                    </h4>
+                    <span className="text-[10px] font-bold bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full uppercase">Status: Ativo</span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className={`p-3 rounded-lg border ${rankingValidation.ps.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase">Pro Soluto (PS)</p>
-                      <p className={`text-lg font-black ${rankingValidation.ps.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <div className={`p-4 rounded-xl border-2 ${rankingValidation.ps.valid ? 'bg-white border-emerald-200' : 'bg-white border-red-200'}`}>
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Pro Soluto (PS)</p>
+                      <p className={`text-2xl font-black ${rankingValidation.ps.valid ? 'text-emerald-600' : 'text-red-600'}`}>
                         {(rankingValidation.ps.current * 100).toFixed(1)}%
-                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.ps.max * 100}%</span>
                       </p>
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${rankingValidation.ps.valid ? 'bg-emerald-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, (rankingValidation.ps.current / rankingValidation.ps.max) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] font-bold text-gray-400 mt-1">Limite: {(rankingValidation.ps.max * 100).toFixed(1)}%</p>
                     </div>
-                    <div className={`p-3 rounded-lg border ${rankingValidation.totalComp.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase">Comp. Total</p>
-                      <p className={`text-lg font-black ${rankingValidation.totalComp.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <div className={`p-4 rounded-xl border-2 ${rankingValidation.totalComp.valid ? 'bg-white border-emerald-200' : 'bg-white border-red-200'}`}>
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Comp. Total</p>
+                      <p className={`text-2xl font-black ${rankingValidation.totalComp.valid ? 'text-emerald-600' : 'text-red-600'}`}>
                         {(rankingValidation.totalComp.current * 100).toFixed(1)}%
-                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.totalComp.max * 100}%</span>
                       </p>
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${rankingValidation.totalComp.valid ? 'bg-emerald-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, (rankingValidation.totalComp.current / rankingValidation.totalComp.max) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] font-bold text-gray-400 mt-1">Limite: {(rankingValidation.totalComp.max * 100).toFixed(1)}%</p>
                     </div>
-                    <div className={`p-3 rounded-lg border ${rankingValidation.constComp.valid ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase">Comp. Construtora</p>
-                      <p className={`text-lg font-black ${rankingValidation.constComp.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <div className={`p-4 rounded-xl border-2 ${rankingValidation.constComp.valid ? 'bg-white border-emerald-200' : 'bg-white border-red-200'}`}>
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Comp. Construtora</p>
+                      <p className={`text-2xl font-black ${rankingValidation.constComp.valid ? 'text-emerald-600' : 'text-red-600'}`}>
                         {(rankingValidation.constComp.current * 100).toFixed(1)}%
-                        <span className="text-[10px] font-normal ml-1 opacity-60">/ {rankingValidation.constComp.max * 100}%</span>
                       </p>
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${rankingValidation.constComp.valid ? 'bg-emerald-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, (rankingValidation.constComp.current / rankingValidation.constComp.max) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] font-bold text-gray-400 mt-1">Limite: {(rankingValidation.constComp.max * 100).toFixed(1)}%</p>
                     </div>
                   </div>
                 </div>
@@ -1249,7 +1276,7 @@ export default function App() {
           </div>
 
           {/* Footer Branding */}
-          <footer className="p-12 pt-0 flex justify-center opacity-30 grayscale pointer-events-none">
+          <footer className="p-12 pt-0 flex flex-col items-center gap-8 opacity-30 grayscale pointer-events-none">
              <div className="flex items-center gap-12">
               <span className="text-xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
               <span className="text-xl font-black text-indigo-900 tracking-tighter">RIVA</span>
@@ -1258,12 +1285,63 @@ export default function App() {
         </div>
       </main>
 
-      {/* Google AdSense Footer Placeholder */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 text-center print:hidden z-40">
-        <div className="max-w-4xl mx-auto h-16 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs uppercase tracking-widest">
-          Publicidade Google AdSense
+      {/* Footer AdSense Placeholder */}
+      <div className="w-full bg-gray-100 border-t border-gray-200 p-4 flex justify-center items-center print:hidden mt-auto">
+        <div className="w-full max-w-[728px] h-[90px] bg-gray-200 flex items-center justify-center text-gray-400 text-sm border border-dashed border-gray-300 rounded">
+          Espaço para Publicidade (Google AdSense 728x90)
         </div>
       </div>
+
+      {/* Ad Popup */}
+      <AnimatePresence>
+        {showAdPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full relative"
+            >
+              <button
+                onClick={() => {
+                  setShowAdPopup(false);
+                  executePrint();
+                }}
+                className="absolute top-4 right-4 p-2 bg-white/80 hover:bg-white rounded-full text-gray-500 hover:text-gray-800 transition-colors z-10 shadow-sm"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <div className="p-8 flex flex-col items-center text-center">
+                <div className="w-full h-[300px] bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 mb-6">
+                  <span className="text-lg font-medium mb-2">Publicidade</span>
+                  <span className="text-sm">Google AdSense (300x250 ou maior)</span>
+                </div>
+                
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">Apoie nossa ferramenta</h3>
+                <p className="text-gray-600 mb-8">
+                  Exibimos este anúncio a cada 5 impressões para manter a ferramenta gratuita.
+                </p>
+                
+                <button
+                  onClick={() => {
+                    setShowAdPopup(false);
+                    executePrint();
+                  }}
+                  className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md"
+                >
+                  Continuar para Impressão
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
