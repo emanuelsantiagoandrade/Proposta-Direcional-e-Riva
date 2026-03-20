@@ -264,9 +264,12 @@ export default function App() {
 
     // Carência
     let simDate = new Date();
-    if (data.sinalAtoInfo) {
-      const [y, m, d] = data.sinalAtoInfo.split('-').map(Number);
-      simDate = new Date(Date.UTC(y, m - 1, d));
+    if (data.data) {
+      const parts = data.data.split('/');
+      if (parts.length === 3) {
+        const [d, m, y] = parts.map(Number);
+        simDate = new Date(Date.UTC(y, m - 1, d));
+      }
     }
     const simMonth = simDate.getUTCFullYear() * 12 + simDate.getUTCMonth();
     const firstInstMonth = startDate.getUTCFullYear() * 12 + startDate.getUTCMonth();
@@ -306,7 +309,7 @@ export default function App() {
     valorRestanteEntradaCalculado, 
     data.quantidadeParcelasValor, 
     data.dataEntrega, 
-    data.sinalAtoInfo,
+    data.data,
     validParcelaDates,
     data.valorParcelaInfo
   ]);
@@ -1016,7 +1019,7 @@ export default function App() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Valor Restante Entrada</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Valor Restante Entrada</td>
                       <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
                         {formatCurrency(valorRestanteEntradaCalculado)}
                       </td>
@@ -1058,6 +1061,14 @@ export default function App() {
                           placeholder="Escreva quantas parcelas: 0 a 84 x "
                           className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs"
                         />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">
+                        Se pagar a última tem desconto? Sim! Segue valor aproximado:
+                      </td>
+                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-green-700 text-base sm:text-lg">
+                        {formatCurrency(data.quantidadeParcelasValor && Number(data.quantidadeParcelasValor) > 0 ? valorRestanteEntradaCalculado / Number(data.quantidadeParcelasValor) : 0)}
                       </td>
                     </tr>
                   </tbody>
@@ -1248,26 +1259,29 @@ export default function App() {
                   </div>
 
                   {/* Aço */}
-                  <div className="flex items-stretch border-2 border-slate-400 rounded-lg overflow-hidden bg-slate-50">
-                    <div className="bg-slate-200 w-16 flex flex-col items-center justify-center p-2 border-r-2 border-slate-400">
-                      <span className="text-xs font-bold text-slate-700 -rotate-90 whitespace-nowrap mb-4">Aço</span>
-                      <span className="text-2xl">⚙️</span>
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-slate-400 rounded-lg overflow-hidden bg-slate-50">
+                    <div className="bg-slate-200 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-slate-400 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-slate-700 sm:-rotate-90 whitespace-nowrap sm:mb-4">Aço</span>
+                      <span className="text-xl sm:text-2xl">⚙️</span>
                     </div>
-                    <div className="flex-1 flex items-center justify-between p-4 px-6">
-                      <span className="text-xl font-bold text-gray-800">12% PS</span>
-                      <span className="text-xl font-bold text-gray-800">84X</span>
-                      <span className="text-lg font-semibold text-gray-700">40% / 10% Comprometimento de renda</span>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 sm:px-6 gap-2 sm:gap-0">
+                      <div className="flex gap-4 sm:gap-8">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">12% PS</span>
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">84X</span>
+                      </div>
+                      <span className="text-sm sm:text-lg font-semibold text-gray-700 text-center sm:text-right">40% / 10% Comprometimento de renda</span>
                     </div>
                   </div>
 
                   {/* Não Elegível */}
-                  <div className="flex items-stretch border-2 border-red-400 rounded-lg overflow-hidden bg-red-50">
-                    <div className="bg-red-100 w-16 flex flex-col items-center justify-center p-2 border-r-2 border-red-400">
-                      <span className="text-xs font-bold text-red-700 -rotate-90 whitespace-nowrap mb-6">Não elegível</span>
-                      <span className="text-2xl">🚫</span>
+                  <div className="flex flex-col sm:flex-row items-stretch border-2 border-red-400 rounded-lg overflow-hidden bg-red-50">
+                    <div className="bg-red-100 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-red-400 gap-2 sm:gap-0">
+                      <span className="text-xs font-bold text-red-700 sm:-rotate-90 whitespace-nowrap sm:mb-6">Não elegível</span>
+                      <span className="text-xl sm:text-2xl">🚫</span>
                     </div>
-                    <div className="flex-1 flex items-center justify-center p-4 px-6">
-                      <span className="text-xl font-bold text-gray-800">Não elegível</span>
+                    <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-4 sm:px-6 gap-1">
+                      <span className="text-lg sm:text-xl font-bold text-gray-800 text-center">Não elegível</span>
+                      <span className="text-xs sm:text-sm font-semibold text-red-700 text-center">Não consegue parcelar o pro soluto. Fale com Viabilizador</span>
                     </div>
                   </div>
                 </div>
