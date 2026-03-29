@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Printer, Calculator, X, Info } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Types
 interface ProposalData {
@@ -48,6 +49,8 @@ interface ProposalData {
   quantidadeParcelasValor: number;
   valorParcelaInfo: string;
   valorParcelaValor: number;
+  anuaisQuantidade: number;
+  anuaisValor: number;
 }
 
 export default function App() {
@@ -88,35 +91,37 @@ export default function App() {
     valorRestanteEntradaInfo: '',
     valorRestanteEntradaValor: 0,
     quantidadeParcelasInfo: '',
-    quantidadeParcelasValor: 0,
+    quantidadeParcelasValor: 84,
     valorParcelaInfo: '',
     valorParcelaValor: 0,
+    anuaisQuantidade: 0,
+    anuaisValor: 0,
   });
 
   const [printCount, setPrintCount] = useState(0);
   const [showAdPopup, setShowAdPopup] = useState(false);
 
-  const EMPREENDIMENTOS: Record<string, string> = {
-    "Conquista Maraponga": "2027-01-31",
-    "Conquista Messejana": "2028-05-31",
-    "Estilo Fátima": "2027-03-30",
-    "Estilo Passaré": "2026-10-31",
-    "Estilo Praia": "2026-10-31",
-    "Lúmina Fátima": "2028-06-30",
-    "MyPlace Benfica": "Entregue",
-    "Nature Arbo": "2028-05-31",
-    "Nature Eusébio": "2028-12-31",
-    "Orizon Rooftop": "2029-04-30",
-    "Reserva Flora": "Entregue",
-    "Seano Beach": "2028-07-30",
-    "Viva Nova Caucaia": "2027-04-30",
-    "Viva Vida Coqueiros": "2027-09-30",
-    "Viva Vida Jandaia": "2028-06-30",
-    "Viva Vida Maracanaú": "2027-06-30",
-    "Viva Vida Parque": "Entregue",
-    "Viva Vida Siqueira": "2026-09-30",
-    "Viva Vida Sul": "2028-04-30",
-    "Viva Vida Tropical": "Entregue"
+  const EMPREENDIMENTOS: Record<string, { data: string, link: string }> = {
+    "Conquista Maraponga": { data: "2027-01-31", link: "https://drive.google.com/drive/folders/1SG_hjajREyteMcr7_M2swybXdswYcLds?usp=drive_link" },
+    "Conquista Messejana": { data: "2028-05-31", link: "https://drive.google.com/drive/folders/1LXqN4e7ib6GA37f_zSVJWk8232rs7bRi?usp=drive_link" },
+    "Estilo Fátima": { data: "2027-03-30", link: "https://drive.google.com/drive/folders/14hOJLPrMCvHRzk9VGjxjQNoPrRj_nUx2?usp=drive_link" },
+    "Estilo Passaré": { data: "2026-10-31", link: "https://drive.google.com/drive/folders/1GvKhDsrZ4rnEa-NuNymCKwOezcv4CGXf?usp=drive_link" },
+    "Estilo Praia": { data: "2026-10-31", link: "https://drive.google.com/drive/folders/1jqFVnn8Pf5Qd-aR-GsHLkkRVCJ3a-JvU?usp=drive_link" },
+    "Lúmina Fátima": { data: "2028-06-30", link: "https://drive.google.com/drive/folders/1gdRJMDH2e2Ecv8U8bb7C1uG-MWeETLCo?usp=drive_link" },
+    "MyPlace Benfica": { data: "Entregue", link: "https://drive.google.com/drive/folders/1nqzfTcIAtUj9sdAgXlKzcKeBfVv3NlMZ?usp=drive_link" },
+    "Nature Arbo": { data: "2028-05-31", link: "https://drive.google.com/drive/folders/1f_OG7VKMFagDX_UoxWK8-SgeX15kfYaN?usp=drive_link" },
+    "Nature Eusébio": { data: "2028-07-31", link: "https://drive.google.com/drive/folders/1AfU2DAam5h6s6wVmSzWnTbOcUUKiNHAg?usp=drive_link" },
+    "Orizon Rooftop": { data: "2029-04-30", link: "https://drive.google.com/drive/folders/1QvUfUg3-27uVDQMpAV9z60EAWCpdsMxC?usp=drive_link" },
+    "Reserva Flora": { data: "Entregue", link: "https://drive.google.com/drive/folders/1aQGlqupGsA672ilyPUeMxUqNRkSBTBAE?usp=drive_link" },
+    "Seano Beach": { data: "2028-07-30", link: "https://drive.google.com/drive/folders/1Ou40hjybFktfT3-zQZFPqRtwdHxS8DmN?usp=drive_link" },
+    "Viva Nova Caucaia": { data: "2027-04-30", link: "https://drive.google.com/drive/folders/1VelEu-DcrA8R763DiG3ifwebVwkNNPdt?usp=drive_link" },
+    "Viva Vida Coqueiros": { data: "2027-09-30", link: "https://drive.google.com/drive/folders/1I8YkjufrVCB5UDVd867P-Y5QYGaQaE-_?usp=drive_link" },
+    "Viva Vida Jandaia": { data: "2028-06-30", link: "https://drive.google.com/drive/folders/1_ojnKIEd8QPPlkCA7U65_AR2lU589a5h?usp=drive_link" },
+    "Viva Vida Maracanaú": { data: "2027-06-30", link: "https://drive.google.com/drive/folders/1x_3GxAQIth_noN4qZjrawwZ6IO35Ibyf?usp=drive_link" },
+    "Viva Vida Parque": { data: "Entregue", link: "https://drive.google.com/drive/folders/1RFswrgGeE2wOTAVt2a3uFbOXcl7CtN89?usp=drive_link" },
+    "Viva Vida Siqueira": { data: "2026-09-30", link: "https://drive.google.com/drive/folders/13h5L-fAHtaSusnKoB4t7j7qPbD9eH4Oc?usp=drive_link" },
+    "Viva Vida Sul": { data: "2028-04-30", link: "https://drive.google.com/drive/folders/1rag3UlzyFIkTVMkTxWFO79GUeOGtGZpM?usp=drive_link" },
+    "Viva Vida Tropical": { data: "Entregue", link: "https://drive.google.com/drive/folders/1WSWGcOTs_8_YgWJINXMjyOi391bNuSQN?usp=drive_link" }
   };
 
   const handleEmpreendimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +129,7 @@ export default function App() {
     setData(prev => {
       const newData = { ...prev, empreendimento: value };
       if (EMPREENDIMENTOS[value]) {
-        newData.dataEntrega = EMPREENDIMENTOS[value];
+        newData.dataEntrega = EMPREENDIMENTOS[value].data;
       }
       return newData;
     });
@@ -154,6 +159,7 @@ export default function App() {
   }, [valorBaseParaSinal, sinalEmDobroResultado]);
 
   const valorRestanteEntradaCalculado = useMemo(() => {
+    const totalAnuais = (Number(data.anuaisQuantidade) || 0) * (Number(data.anuaisValor) || 0);
     return valorFinal - (
       data.financiamentoValor + 
       data.subsidioFederalValor + 
@@ -162,7 +168,8 @@ export default function App() {
       data.sinalAtoValor +
       data.sinal1Valor +
       data.sinal2Valor +
-      data.sinal3Valor
+      data.sinal3Valor +
+      totalAnuais
     );
   }, [
     valorFinal, 
@@ -173,7 +180,9 @@ export default function App() {
     data.sinalAtoValor,
     data.sinal1Valor,
     data.sinal2Valor,
-    data.sinal3Valor
+    data.sinal3Valor,
+    data.anuaisQuantidade,
+    data.anuaisValor
   ]);
 
   const validParcelaDates = useMemo(() => {
@@ -233,6 +242,43 @@ export default function App() {
     data.sinal2Info,
     data.sinal3Info
   ]);
+
+  const anuaisDates = useMemo(() => {
+    const qty = Number(data.anuaisQuantidade) || 0;
+    if (qty <= 0 || !data.dataEntrega || data.dataEntrega === 'Entregue') return [];
+
+    const deliveryDate = new Date(data.dataEntrega + 'T12:00:00');
+    const deliveryYear = deliveryDate.getFullYear();
+    const deliveryMonth = deliveryDate.getMonth(); // 0-11
+
+    const today = new Date();
+    let startYear = today.getFullYear();
+    
+    // If today is after Dec 15th, start next year
+    if (today.getMonth() === 11 && today.getDate() > 15) {
+      startYear++;
+    }
+
+    const dates: string[] = [];
+    for (let i = 0; i < qty; i++) {
+      const year = startYear + i;
+      
+      // Rule: No annual in Dec if delivery is in Dec
+      if (year === deliveryYear && deliveryMonth === 11) {
+        // Skip this year or stop? Usually stop if it's delivery year
+        break; 
+      }
+      
+      // Rule: Annual must be before delivery
+      const annualDate = new Date(year, 11, 15, 12, 0, 0);
+      if (annualDate >= deliveryDate) {
+        break;
+      }
+
+      dates.push(`${year}-12-15`);
+    }
+    return dates;
+  }, [data.anuaisQuantidade, data.dataEntrega]);
 
   const valorParcelaCalculado = useMemo(() => {
     const parcelas = Number(data.quantidadeParcelasValor) || 0;
@@ -353,6 +399,9 @@ export default function App() {
     const isPsValid = psPercentage <= rule.ps;
     const isTotalCompValid = totalCompPercentage <= rule.totalComp;
     const isConstCompValid = constCompPercentage <= rule.constComp;
+    
+    // Validação de Anuais (máximo 50% da renda)
+    const isAnuaisValid = Number(data.anuaisValor) <= (Number(data.renda) * 0.5);
 
     // Cálculo de sugestão de aumento no Ato para enquadramento
     let suggestedAtoIncrease = 0;
@@ -380,15 +429,16 @@ export default function App() {
     }
 
     return {
-      isValid: isPsValid && isTotalCompValid && isConstCompValid && !hasAnyError,
+      isValid: isPsValid && isTotalCompValid && isConstCompValid && isAnuaisValid && !hasAnyError,
       isGeneralError: hasAnyError,
       isParcelaTooHigh,
+      isAnuaisTooHigh: !isAnuaisValid,
       suggestedAtoIncrease: Math.ceil(suggestedAtoIncrease),
       ps: { valid: isPsValid, current: psPercentage, max: rule.ps },
       totalComp: { valid: isTotalCompValid, current: totalCompPercentage, max: rule.totalComp },
       constComp: { valid: isConstCompValid, current: constCompPercentage, max: rule.constComp }
     };
-  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado]);
+  }, [data.ranking, data.valorUnidade, valorRestanteEntradaCalculado, data.renda, data.valorParcelaFinanciamentoValor, valorParcelaCalculado, data.anuaisValor]);
 
   // Auto-select the best date when valid options change
   useEffect(() => {
@@ -434,7 +484,8 @@ export default function App() {
       'sinal1Valor',
       'sinal2Valor',
       'sinal3Valor',
-      'valorRestanteEntradaValor'
+      'valorRestanteEntradaValor',
+      'anuaisValor'
     ];
 
     if (currencyFields.includes(name)) {
@@ -442,7 +493,7 @@ export default function App() {
       const cleanValue = value.replace(/\D/g, '');
       const numericValue = Number(cleanValue) / 100;
       setData(prev => ({ ...prev, [name]: numericValue }));
-    } else if (name === 'sinalEmDobroPorcentagem' || name === 'quantidadeParcelasValor') {
+    } else if (name === 'sinalEmDobroPorcentagem' || name === 'quantidadeParcelasValor' || name === 'anuaisQuantidade') {
       // Simple number for percentage and installments
       const numericValue = value === '' ? 0 : Number(value);
       setData(prev => ({ ...prev, [name]: numericValue }));
@@ -574,14 +625,14 @@ export default function App() {
                     ))}
                   </datalist>
                 </div>
-                <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
-                  <label className="text-sm font-semibold text-gray-600 min-w-fit">Unidade:</label>
-                  <input 
-                    type="text" 
+                <div className="flex items-start gap-2 border-b border-gray-300 pb-1">
+                  <label className="text-sm font-semibold text-gray-600 min-w-fit mt-1">Unidade:</label>
+                  <textarea 
                     name="unidade"
                     value={data.unidade}
                     onChange={handleChange}
-                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
+                    rows={1}
+                    className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800 resize-none"
                   />
                 </div>
                 <div className="flex items-start gap-2 border-b border-gray-300 pb-1">
@@ -919,7 +970,7 @@ export default function App() {
                           />
                         </div>
                       </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3 relative">
                         <input 
                           type="date" 
                           name="sinalAtoInfo"
@@ -927,6 +978,13 @@ export default function App() {
                           onChange={handleChange}
                           className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
                         />
+                        {!data.sinalAtoInfo && (
+                          <div className="absolute inset-0 flex items-center justify-end pr-1 pointer-events-none animate-blink print:hidden">
+                            <span className="text-[7px] sm:text-[8px] font-black text-red-600 uppercase bg-white/80 px-1 rounded shadow-sm border border-red-200">
+                              Preencha a data
+                            </span>
+                          </div>
+                        )}
                       </td>
                     </tr>
                     <tr>
@@ -1006,6 +1064,82 @@ export default function App() {
               </div>
             </section>
 
+            {/* Tabela de Anuais */}
+            <section className="mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
+                  <thead>
+                    <tr>
+                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
+                        ANUAIS
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Quantidade</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
+                        <input 
+                          type="number" 
+                          name="anuaisQuantidade"
+                          value={data.anuaisQuantidade || ''}
+                          onChange={handleChange}
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                          min="0"
+                        />
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3 text-[10px] text-gray-500 italic">
+                        Máx. {anuaisDates.length} permitidas
+                        {Number(data.anuaisQuantidade) > anuaisDates.length && anuaisDates.length > 0 && (
+                          <span className="block text-red-600 font-bold">Excesso de anuais!</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor de cada Anual</td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-gray-500">R$</span>
+                          <input 
+                            type="text" 
+                            name="anuaisValor"
+                            value={formatDisplay(data.anuaisValor)}
+                            onChange={handleChange}
+                            className={`w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold ${rankingValidation?.isAnuaisTooHigh ? 'text-red-600' : ''}`}
+                          />
+                        </div>
+                      </td>
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] font-bold text-indigo-600">
+                        Total: {formatCurrency(Number(data.anuaisQuantidade) * Number(data.anuaisValor))}
+                      </td>
+                    </tr>
+                    {anuaisDates.length > 0 && (
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Datas das Anuais</td>
+                        <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] text-gray-600">
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {anuaisDates.map((date, idx) => (
+                              <span key={idx} className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                                {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {rankingValidation?.isAnuaisTooHigh && (
+                  <p className="mt-1 text-[10px] text-red-600 font-bold text-center uppercase">
+                    Atenção: O valor da anual excede 50% da renda do cliente ({formatCurrency(data.renda * 0.5)})
+                  </p>
+                )}
+                <p className="mt-2 text-[10px] text-indigo-700 font-medium text-center italic">
+                  * Nota: As parcelas anuais coincidem com as mensais (paga-se ambas no mês da anual).
+                </p>
+              </div>
+            </section>
+
             {/* Tabela RESTANTE ENTRADA */}
             <section className="mb-8">
               <div className="overflow-x-auto">
@@ -1059,8 +1193,11 @@ export default function App() {
                           value={data.quantidadeParcelasValor || ''}
                           onChange={handleChange}
                           placeholder="Escreva quantas parcelas: 0 a 84 x "
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs"
+                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs font-bold"
                         />
+                        <span className="absolute bottom-0 right-1 text-[8px] text-gray-400 italic pointer-events-none">
+                          Clique para alterar
+                        </span>
                       </td>
                     </tr>
                     <tr>
@@ -1113,6 +1250,9 @@ export default function App() {
                         {data.ranking && !rankingValidation.constComp.valid && (
                           <p>• <strong>Comprometimento Construtora:</strong> A parcela da construtora compromete {(rankingValidation.constComp.current * 100).toFixed(1)}% da renda. O limite é {(rankingValidation.constComp.max * 100).toFixed(1)}%.</p>
                         )}
+                        {rankingValidation.isAnuaisTooHigh && (
+                          <p>• <strong>Anuais Impeditivas:</strong> O valor de cada anual ultrapassa 50% da renda mensal do cliente ({formatCurrency(data.renda * 0.5)}).</p>
+                        )}
                         {rankingValidation.suggestedAtoIncrease > 0 && (
                           <div className="mt-3 p-2 bg-white/50 rounded border border-red-200">
                             <p className="text-red-900 font-bold">
@@ -1125,16 +1265,35 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Monitoramento de Ranking em Tempo Real - Reforçado */}
-              {data.ranking && (
-                <div className="w-full max-w-2xl bg-indigo-50 p-6 rounded-2xl shadow-md border-2 border-indigo-200 mb-6 transform hover:scale-[1.02] transition-transform">
+            {/* QR Code do Empreendimento */}
+            {data.empreendimento && EMPREENDIMENTOS[data.empreendimento] && (
+              <div className="mt-8 flex flex-col items-center gap-2">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                  <QRCodeSVG 
+                    value={EMPREENDIMENTOS[data.empreendimento].link} 
+                    size={100}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <p className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest text-center">
+                  Escaneie para acessar os arquivos do empreendimento
+                </p>
+              </div>
+            )}
+
+            {/* Monitoramento de Ranking em Tempo Real - Reforçado (Visível na Impressão) */}
+            {data.ranking && (
+              <div className="mt-8 flex flex-col items-center gap-4">
+                <div className="w-full max-w-2xl bg-indigo-50 p-6 rounded-2xl shadow-md border-2 border-indigo-200 mb-6 transform hover:scale-[1.02] transition-transform print:shadow-none print:transform-none print:hover:scale-100">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-black text-indigo-900 uppercase tracking-widest flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-indigo-600 animate-pulse" />
+                      <div className="w-3 h-3 rounded-full bg-indigo-600 animate-pulse print:hidden" />
                       Monitoramento em Tempo Real: {data.ranking}
                     </h4>
-                    <span className="text-[10px] font-bold bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full uppercase">Status: Ativo</span>
+                    <span className="text-[10px] font-bold bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full uppercase print:border print:border-indigo-300">Status: Ativo</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className={`p-4 rounded-xl border-2 ${rankingValidation.ps.valid ? 'bg-white border-emerald-200' : 'bg-white border-red-200'}`}>
@@ -1178,8 +1337,10 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              )}
-              
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-col items-center gap-4 print:hidden">
               <button 
                 onClick={handlePrint}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
