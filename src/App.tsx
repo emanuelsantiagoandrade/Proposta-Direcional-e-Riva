@@ -100,6 +100,7 @@ export default function App() {
 
   const [printCount, setPrintCount] = useState(0);
   const [showAdPopup, setShowAdPopup] = useState(false);
+  const [isResumoMode, setIsResumoMode] = useState(false);
 
   const EMPREENDIMENTOS: Record<string, { data: string, link: string }> = {
     "Conquista Maraponga": { data: "2027-01-31", link: "https://drive.google.com/drive/folders/1SG_hjajREyteMcr7_M2swybXdswYcLds?usp=drive_link" },
@@ -157,6 +158,10 @@ export default function App() {
   const valorFinal = useMemo(() => {
     return valorBaseParaSinal - sinalEmDobroResultado;
   }, [valorBaseParaSinal, sinalEmDobroResultado]);
+
+  const totalSubsidiosFGTS = useMemo(() => {
+    return Number(data.subsidioFederalValor) + Number(data.subsidioEstadualValor) + Number(data.fgtsValor);
+  }, [data.subsidioFederalValor, data.subsidioEstadualValor, data.fgtsValor]);
 
   const valorRestanteEntradaCalculado = useMemo(() => {
     const totalAnuais = (Number(data.anuaisQuantidade) || 0) * (Number(data.anuaisValor) || 0);
@@ -607,6 +612,13 @@ export default function App() {
                       onChange={handleChange}
                       className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800"
                     />
+                    {!data.renda && (
+                      <div className="animate-blink print:hidden">
+                        <span className="text-[10px] font-black text-red-600 uppercase bg-white/80 px-1 rounded shadow-sm border border-red-200">
+                          Preencha a renda
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-end gap-2 border-b border-gray-300 pb-1">
@@ -744,104 +756,115 @@ export default function App() {
                         </div>
                       </td>
                     </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus de Adimplência</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="bonusAdimplencia"
-                            value={formatDisplay(data.bonusAdimplencia)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus Campanha</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="bonusCampanha"
-                            value={formatDisplay(data.bonusCampanha)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Volta ao Caixa</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="voltaAoCaixa"
-                            value={formatDisplay(data.voltaAoCaixa)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Folga de Tabela</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="folgaTabela"
-                            value={formatDisplay(data.folgaTabela)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Desconto Coordenador</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="descontoCoordenador"
-                            value={formatDisplay(data.descontoCoordenador)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-50/50">
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Sinal em Dobro</td>
-                      <td className="border-2 border-gray-400 px-0 py-0">
-                        <div className="flex h-full">
-                          <div className="w-1/3 sm:w-1/4 border-r-2 border-gray-400 flex items-center justify-center bg-white">
-                            <input 
-                              type="number" 
-                              name="sinalEmDobroPorcentagem"
-                              value={data.sinalEmDobroPorcentagem || ''}
-                              onChange={handleChange}
-                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
-                            />
-                            <span className="font-bold mr-1 sm:mr-2">%</span>
-                          </div>
-                          <div className="flex-1 flex items-center justify-center font-bold text-indigo-700 text-xs sm:text-sm">
-                            {formatCurrency(sinalEmDobroResultado)}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
+                    {isResumoMode ? (
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Total de Descontos</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-green-600">
+                          {formatCurrency(totalDescontos + sinalEmDobroResultado)}
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus de Adimplência</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="bonusAdimplencia"
+                                value={formatDisplay(data.bonusAdimplencia)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Bônus Campanha</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="bonusCampanha"
+                                value={formatDisplay(data.bonusCampanha)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Volta ao Caixa</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="voltaAoCaixa"
+                                value={formatDisplay(data.voltaAoCaixa)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Folga de Tabela</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="folgaTabela"
+                                value={formatDisplay(data.folgaTabela)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Desconto Coordenador</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="descontoCoordenador"
+                                value={formatDisplay(data.descontoCoordenador)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr className="bg-gray-50/50">
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Sinal em Dobro</td>
+                          <td className="border-2 border-gray-400 px-0 py-0">
+                            <div className="flex h-full">
+                              <div className="w-1/3 sm:w-1/4 border-r-2 border-gray-400 flex items-center justify-center bg-white">
+                                <input 
+                                  type="number" 
+                                  name="sinalEmDobroPorcentagem"
+                                  value={data.sinalEmDobroPorcentagem || ''}
+                                  onChange={handleChange}
+                                  className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                                />
+                                <span className="font-bold mr-1 sm:mr-2">%</span>
+                              </div>
+                              <div className="flex-1 flex items-center justify-center font-bold text-indigo-700 text-xs sm:text-sm">
+                                {formatCurrency(sinalEmDobroResultado)}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      </>
+                    )}
                     <tr className="bg-white">
                       <td className="border-2 border-gray-400 px-2 py-3 sm:px-4 sm:py-4 uppercase text-[9px] sm:text-[10px] font-black leading-tight text-right">
-                        Valor da Unidade após os descontos acima
+                        {isResumoMode ? 'Valor do Imóvel' : 'Valor da Unidade após os descontos acima'}
                       </td>
                       <td className="border-2 border-gray-400 px-2 py-3 sm:px-4 sm:py-4 text-base sm:text-xl font-black text-indigo-900">
                         {formatCurrency(valorFinal)}
@@ -864,81 +887,122 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Financiamento</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="financiamentoValor"
-                            value={formatDisplay(data.financiamentoValor)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Federal</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="subsidioFederalValor"
-                            value={formatDisplay(data.subsidioFederalValor)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Estadual</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="subsidioEstadualValor"
-                            value={formatDisplay(data.subsidioEstadualValor)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">FGTS</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="fgtsValor"
-                            value={formatDisplay(data.fgtsValor)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Valor da Parcela de Financiamento</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500 font-bold">R$</span>
-                          <input 
-                            type="text" 
-                            name="valorParcelaFinanciamentoValor"
-                            value={formatDisplay(data.valorParcelaFinanciamentoValor)}
-                            onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
-                          />
-                        </div>
-                      </td>
-                    </tr>
+                    {isResumoMode ? (
+                      <>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Financiamento Bancário</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2 font-bold">
+                            {formatCurrency(data.financiamentoValor)}
+                          </td>
+                        </tr>
+                        {totalSubsidiosFGTS > 0 && (
+                          <tr>
+                            <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídios e FGTS</td>
+                            <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-green-600">
+                              {formatCurrency(totalSubsidiosFGTS)}
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Valor da Parcela (Financ.)</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 relative">
+                            {formatCurrency(data.valorParcelaFinanciamentoValor)}
+                            {!data.valorParcelaFinanciamentoValor && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-blink print:hidden">
+                                <span className="text-[8px] font-black text-red-600 uppercase bg-white/80 px-1 rounded shadow-sm border border-red-200">
+                                  Preencha a parcela
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      </>
+                    ) : (
+                      <>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Financiamento</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="financiamentoValor"
+                                value={formatDisplay(data.financiamentoValor)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Federal</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="subsidioFederalValor"
+                                value={formatDisplay(data.subsidioFederalValor)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Subsídio Estadual</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="subsidioEstadualValor"
+                                value={formatDisplay(data.subsidioEstadualValor)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">FGTS</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500">R$</span>
+                              <input 
+                                type="text" 
+                                name="fgtsValor"
+                                value={formatDisplay(data.fgtsValor)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right">Valor da Parcela de Financiamento</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 relative">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-gray-500 font-bold">R$</span>
+                              <input 
+                                type="text" 
+                                name="valorParcelaFinanciamentoValor"
+                                value={formatDisplay(data.valorParcelaFinanciamentoValor)}
+                                onChange={handleChange}
+                                className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                              />
+                            </div>
+                            {!data.valorParcelaFinanciamentoValor && (
+                              <div className="absolute inset-0 flex items-center justify-end pr-1 pointer-events-none animate-blink print:hidden">
+                                <span className="text-[8px] font-black text-red-600 uppercase bg-white/80 px-1 rounded shadow-sm border border-red-200">
+                                  Preencha a parcela
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -987,158 +1051,166 @@ export default function App() {
                         )}
                       </td>
                     </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 1</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
+                    {(!isResumoMode || data.sinal1Valor > 0) && (
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 1</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-gray-500">R$</span>
+                            <input 
+                              type="text" 
+                              name="sinal1Valor"
+                              value={formatDisplay(data.sinal1Valor)}
+                              onChange={handleChange}
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            />
+                          </div>
+                        </td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
                           <input 
-                            type="text" 
-                            name="sinal1Valor"
-                            value={formatDisplay(data.sinal1Valor)}
+                            type="date" 
+                            name="sinal1Info"
+                            value={data.sinal1Info}
                             onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
                           />
-                        </div>
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <input 
-                          type="date" 
-                          name="sinal1Info"
-                          value={data.sinal1Info}
-                          onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
-                        />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 2</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
+                        </td>
+                      </tr>
+                    )}
+                    {(!isResumoMode || data.sinal2Valor > 0) && (
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 2</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-gray-500">R$</span>
+                            <input 
+                              type="text" 
+                              name="sinal2Valor"
+                              value={formatDisplay(data.sinal2Valor)}
+                              onChange={handleChange}
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            />
+                          </div>
+                        </td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
                           <input 
-                            type="text" 
-                            name="sinal2Valor"
-                            value={formatDisplay(data.sinal2Valor)}
+                            type="date" 
+                            name="sinal2Info"
+                            value={data.sinal2Info}
                             onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
                           />
-                        </div>
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <input 
-                          type="date" 
-                          name="sinal2Info"
-                          value={data.sinal2Info}
-                          onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
-                        />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 3</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
+                        </td>
+                      </tr>
+                    )}
+                    {(!isResumoMode || data.sinal3Valor > 0) && (
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Sinal 3</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-gray-500">R$</span>
+                            <input 
+                              type="text" 
+                              name="sinal3Valor"
+                              value={formatDisplay(data.sinal3Valor)}
+                              onChange={handleChange}
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            />
+                          </div>
+                        </td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
                           <input 
-                            type="text" 
-                            name="sinal3Valor"
-                            value={formatDisplay(data.sinal3Valor)}
+                            type="date" 
+                            name="sinal3Info"
+                            value={data.sinal3Info}
                             onChange={handleChange}
-                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
                           />
-                        </div>
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <input 
-                          type="date" 
-                          name="sinal3Info"
-                          value={data.sinal3Info}
-                          onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs"
-                        />
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </section>
 
             {/* Tabela de Anuais */}
-            <section className="mb-8">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
-                  <thead>
-                    <tr>
-                      <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
-                        ANUAIS
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Quantidade</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
-                        <input 
-                          type="number" 
-                          name="anuaisQuantidade"
-                          value={data.anuaisQuantidade || ''}
-                          onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
-                          min="0"
-                        />
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3 text-[10px] text-gray-500 italic">
-                        Máx. {anuaisDates.length} permitidas
-                        {Number(data.anuaisQuantidade) > anuaisDates.length && anuaisDates.length > 0 && (
-                          <span className="block text-red-600 font-bold">Excesso de anuais!</span>
-                        )}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor de cada Anual</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-gray-500">R$</span>
-                          <input 
-                            type="text" 
-                            name="anuaisValor"
-                            value={formatDisplay(data.anuaisValor)}
-                            onChange={handleChange}
-                            className={`w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold ${rankingValidation?.isAnuaisTooHigh ? 'text-red-600' : ''}`}
-                          />
-                        </div>
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] font-bold text-indigo-600">
-                        Total: {formatCurrency(Number(data.anuaisQuantidade) * Number(data.anuaisValor))}
-                      </td>
-                    </tr>
-                    {anuaisDates.length > 0 && (
+            {(!isResumoMode || data.anuaisQuantidade > 0) && (
+              <section className="mb-8">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border-2 border-gray-400 text-sm text-center bg-white">
+                    <thead>
                       <tr>
-                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Datas das Anuais</td>
-                        <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] text-gray-600">
-                          <div className="flex flex-wrap justify-center gap-2">
-                            {anuaisDates.map((date, idx) => (
-                              <span key={idx} className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
-                                {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                              </span>
-                            ))}
-                          </div>
+                        <th colSpan={3} className="border-2 border-gray-400 px-4 py-2 uppercase text-sm tracking-wider font-bold bg-[#002598] text-white">
+                          ANUAIS
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/3">Quantidade</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3">
+                          <input 
+                            type="number" 
+                            name="anuaisQuantidade"
+                            value={data.anuaisQuantidade || ''}
+                            onChange={handleChange}
+                            className="w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold"
+                            min="0"
+                          />
+                        </td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/3 text-[10px] text-gray-500 italic">
+                          Máx. {anuaisDates.length} permitidas
+                          {Number(data.anuaisQuantidade) > anuaisDates.length && anuaisDates.length > 0 && (
+                            <span className="block text-red-600 font-bold">Excesso de anuais!</span>
+                          )}
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-                {rankingValidation?.isAnuaisTooHigh && (
-                  <p className="mt-1 text-[10px] text-red-600 font-bold text-center uppercase">
-                    Atenção: O valor da anual excede 50% da renda do cliente ({formatCurrency(data.renda * 0.5)})
+                      <tr>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor de cada Anual</td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-gray-500">R$</span>
+                            <input 
+                              type="text" 
+                              name="anuaisValor"
+                              value={formatDisplay(data.anuaisValor)}
+                              onChange={handleChange}
+                              className={`w-full text-center bg-transparent border-none focus:ring-0 p-0 font-bold ${rankingValidation?.isAnuaisTooHigh ? 'text-red-600' : ''}`}
+                            />
+                          </div>
+                        </td>
+                        <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] font-bold text-indigo-600">
+                          Total: {formatCurrency(Number(data.anuaisQuantidade) * Number(data.anuaisValor))}
+                        </td>
+                      </tr>
+                      {anuaisDates.length > 0 && (
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Datas das Anuais</td>
+                          <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 text-[10px] text-gray-600">
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {anuaisDates.map((date, idx) => (
+                                <span key={idx} className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                                  {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  {rankingValidation?.isAnuaisTooHigh && (
+                    <p className="mt-1 text-[10px] text-red-600 font-bold text-center uppercase">
+                      Atenção: O valor da anual excede 50% da renda do cliente ({formatCurrency(data.renda * 0.5)})
+                    </p>
+                  )}
+                  <p className="mt-2 text-[10px] text-indigo-700 font-medium text-center italic">
+                    * Nota: As parcelas anuais coincidem com as mensais (paga-se ambas no mês da anual).
                   </p>
-                )}
-                <p className="mt-2 text-[10px] text-indigo-700 font-medium text-center italic">
-                  * Nota: As parcelas anuais coincidem com as mensais (paga-se ambas no mês da anual).
-                </p>
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
 
             {/* Tabela RESTANTE ENTRADA */}
             <section className="mb-8">
@@ -1152,62 +1224,81 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Valor Restante Entrada</td>
-                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
-                        {formatCurrency(valorRestanteEntradaCalculado)}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor da Parcela</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
-                        {formatCurrency(valorParcelaCalculado)}
-                      </td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
-                        <select
-                          name="valorParcelaInfo"
-                          value={data.valorParcelaInfo}
-                          onChange={handleChange}
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs appearance-none cursor-pointer"
-                          disabled={validParcelaDates.length === 0}
-                        >
-                          {validParcelaDates.length === 0 && (
-                            <option value="">DD/MM/AAAA</option>
-                          )}
-                          {validParcelaDates.map(opt => (
-                            <option key={opt.dateStr} value={opt.dateStr}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Quantidade de Parcelas</td>
-                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 relative">
-                        <input 
-                          type="number" 
-                          min="0"
-                          max="84"
-                          name="quantidadeParcelasValor"
-                          value={data.quantidadeParcelasValor || ''}
-                          onChange={handleChange}
-                          placeholder="Escreva quantas parcelas: 0 a 84 x "
-                          className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs font-bold"
-                        />
-                        <span className="absolute bottom-0 right-1 text-[8px] text-gray-400 italic pointer-events-none">
-                          Clique para alterar
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">
-                        Se pagar a última tem desconto? Sim! Segue valor aproximado:
-                      </td>
-                      <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-green-700 text-base sm:text-lg">
-                        {formatCurrency(data.quantidadeParcelasValor && Number(data.quantidadeParcelasValor) > 0 ? valorRestanteEntradaCalculado / Number(data.quantidadeParcelasValor) : 0)}
-                      </td>
-                    </tr>
+                    {isResumoMode ? (
+                      <>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-4 sm:px-4 sm:py-6 uppercase text-xs sm:text-sm font-bold text-right w-1/2">Total da Entrada Parcelada</td>
+                          <td className="border-2 border-gray-400 px-2 py-4 sm:px-4 sm:py-6 font-black text-indigo-800 text-xl sm:text-2xl">
+                            {formatCurrency(valorRestanteEntradaCalculado)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-4 sm:px-4 sm:py-6 uppercase text-xs sm:text-sm font-bold text-right">Plano de Pagamento</td>
+                          <td className="border-2 border-gray-400 px-2 py-4 sm:px-4 sm:py-6 font-black text-indigo-800 text-xl sm:text-2xl">
+                            {data.quantidadeParcelasValor}x de {formatCurrency(valorParcelaCalculado)}
+                          </td>
+                        </tr>
+                      </>
+                    ) : (
+                      <>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right w-1/2">Valor Restante Entrada</td>
+                          <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
+                            {formatCurrency(valorRestanteEntradaCalculado)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Valor da Parcela</td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-indigo-700 text-base sm:text-lg">
+                            {formatCurrency(valorParcelaCalculado)}
+                          </td>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3">
+                            <select
+                              name="valorParcelaInfo"
+                              value={data.valorParcelaInfo}
+                              onChange={handleChange}
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0 text-gray-700 uppercase text-[10px] sm:text-xs appearance-none cursor-pointer"
+                              disabled={validParcelaDates.length === 0}
+                            >
+                              {validParcelaDates.length === 0 && (
+                                <option value="">DD/MM/AAAA</option>
+                              )}
+                              {validParcelaDates.map(opt => (
+                                <option key={opt.dateStr} value={opt.dateStr}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">Quantidade de Parcelas</td>
+                          <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 relative">
+                            <input 
+                              type="number" 
+                              min="0"
+                              max="84"
+                              name="quantidadeParcelasValor"
+                              value={data.quantidadeParcelasValor || ''}
+                              onChange={handleChange}
+                              placeholder="Escreva quantas parcelas: 0 a 84 x "
+                              className="w-full text-center bg-transparent border-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:text-xs font-bold"
+                            />
+                            <span className="absolute bottom-0 right-1 text-[8px] text-gray-400 italic pointer-events-none">
+                              Clique para alterar
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold text-right">
+                            Se pagar a última tem desconto? Sim! Segue valor aproximado:
+                          </td>
+                          <td colSpan={2} className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 font-bold text-green-700 text-base sm:text-lg">
+                            {formatCurrency(data.quantidadeParcelasValor && Number(data.quantidadeParcelasValor) > 0 ? valorRestanteEntradaCalculado / Number(data.quantidadeParcelasValor) : 0)}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1341,6 +1432,17 @@ export default function App() {
             )}
 
             <div className="mt-8 flex flex-col items-center gap-4 print:hidden">
+              <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <span className="text-sm font-bold text-gray-700">Modo Resumido para Impressão</span>
+                <button
+                  onClick={() => setIsResumoMode(!isResumoMode)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isResumoMode ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isResumoMode ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
               <button 
                 onClick={handlePrint}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
