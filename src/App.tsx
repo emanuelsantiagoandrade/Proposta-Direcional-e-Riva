@@ -100,6 +100,7 @@ export default function App() {
 
   const [printCount, setPrintCount] = useState(0);
   const [showAdPopup, setShowAdPopup] = useState(false);
+  const [showDeliveryWarning, setShowDeliveryWarning] = useState(false);
   const [isResumoMode, setIsResumoMode] = useState(false);
 
   const EMPREENDIMENTOS: Record<string, { data: string, link: string }> = {
@@ -122,8 +123,29 @@ export default function App() {
     "Viva Vida Parque": { data: "Entregue", link: "https://drive.google.com/drive/folders/1RFswrgGeE2wOTAVt2a3uFbOXcl7CtN89?usp=drive_link" },
     "Viva Vida Siqueira": { data: "2026-09-30", link: "https://drive.google.com/drive/folders/13h5L-fAHtaSusnKoB4t7j7qPbD9eH4Oc?usp=drive_link" },
     "Viva Vida Sul": { data: "2028-04-30", link: "https://drive.google.com/drive/folders/1rag3UlzyFIkTVMkTxWFO79GUeOGtGZpM?usp=drive_link" },
-    "Viva Vida Tropical": { data: "Entregue", link: "https://drive.google.com/drive/folders/1WSWGcOTs_8_YgWJINXMjyOi391bNuSQN?usp=drive_link" }
+    "Viva Vida Tropical": { data: "2026-09-30", link: "https://drive.google.com/drive/folders/1WSWGcOTs_8_YgWJINXMjyOi391bNuSQN?usp=drive_link" }
   };
+
+  useEffect(() => {
+    const getNextWorkday = () => {
+      const target = new Date();
+      target.setDate(target.getDate() + 2);
+      
+      const day = target.getDay();
+      if (day === 0) { // Sunday
+        target.setDate(target.getDate() + 1);
+      } else if (day === 6) { // Saturday
+        target.setDate(target.getDate() + 2);
+      }
+      
+      return target.toISOString().split('T')[0];
+    };
+
+    setData(prev => ({
+      ...prev,
+      sinalAtoInfo: getNextWorkday()
+    }));
+  }, []);
 
   const handleEmpreendimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -131,6 +153,7 @@ export default function App() {
       const newData = { ...prev, empreendimento: value };
       if (EMPREENDIMENTOS[value]) {
         newData.dataEntrega = EMPREENDIMENTOS[value].data;
+        setShowDeliveryWarning(true);
       }
       return newData;
     });
@@ -1571,6 +1594,40 @@ export default function App() {
 
       {/* Ad Popup */}
       <AnimatePresence>
+        {showDeliveryWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-lg w-full relative"
+            >
+              <div className="p-8 flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-6">
+                  <Info className="w-8 h-8 text-amber-600" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-gray-800 mb-4 uppercase">Verificação Importante</h3>
+                <p className="text-gray-600 mb-8 font-medium">
+                  Favor verifique a data de entrega do produto. A construtora pode mudar a data sem aviso prévio. A mudança da data impacta diretamente no valor das mensais.
+                </p>
+                
+                <button
+                  onClick={() => setShowDeliveryWarning(false)}
+                  className="w-full px-8 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                >
+                  ESTOU CIENTE
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showAdPopup && (
           <motion.div
             initial={{ opacity: 0 }}
