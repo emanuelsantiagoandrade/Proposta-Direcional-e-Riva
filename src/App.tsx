@@ -766,7 +766,7 @@ export default function App() {
                   <tbody className="text-center font-medium">
                     <tr>
                       <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 uppercase text-[10px] sm:text-xs font-bold text-right w-1/2">Valor da Unidade</td>
-                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2">
+                      <td className="border-2 border-gray-400 px-2 py-2 sm:px-4 sm:py-3 w-1/2 relative">
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-gray-500">R$</span>
                           <input 
@@ -777,6 +777,13 @@ export default function App() {
                             className="w-full text-center bg-transparent border-none focus:ring-0 p-0"
                           />
                         </div>
+                        {Number(data.valorUnidade) === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-blink print:hidden">
+                            <span className="text-[7px] sm:text-[9px] font-black text-red-600 uppercase bg-white/95 px-2 py-1 rounded shadow-sm border border-red-200 text-center leading-tight">
+                              Atenção: coloque o valor de VENDA<br/>e não o de avaliação
+                            </span>
+                          </div>
+                        )}
                       </td>
                     </tr>
                     {isResumoMode ? (
