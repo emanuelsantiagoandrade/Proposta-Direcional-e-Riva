@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Printer, Calculator, X, Info } from 'lucide-react';
+import { Printer, Calculator, X, Info, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { jsPDF } from "jspdf";
+import * as htmlToImage from "html-to-image";
 
 // Types
 interface ProposalData {
@@ -102,6 +104,8 @@ export default function App() {
   const [showAdPopup, setShowAdPopup] = useState(false);
   const [showDeliveryWarning, setShowDeliveryWarning] = useState(false);
   const [isResumoMode, setIsResumoMode] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const EMPREENDIMENTOS: Record<string, { data: string, link: string }> = {
     "Conquista Maraponga": { data: "2027-01-31", link: "https://drive.google.com/drive/folders/1SG_hjajREyteMcr7_M2swybXdswYcLds?usp=drive_link" },
@@ -567,6 +571,80 @@ export default function App() {
     window.open(window.location.href, '_blank');
   };
 
+  const handleExportPDF = async () => {
+    if (!reportRef.current) return;
+    
+    setIsExporting(true);
+    
+    // Delay para garantir que o React renderizou mudanças de estado (ex: remover botões)
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      const element = reportRef.current;
+      
+      // 1. Preparação: Remove temporariamente scrolls de tabelas para capturar tudo
+      const containers = element.querySelectorAll('.overflow-y-auto');
+      const originalStyles = Array.from(containers).map(c => ({
+        el: c as HTMLElement,
+        maxHeight: (c as HTMLElement).style.maxHeight,
+        overflowY: (c as HTMLElement).style.overflowY,
+        display: (c as HTMLElement).style.display
+      }));
+      
+      containers.forEach(c => {
+        (c as HTMLElement).style.maxHeight = 'none';
+        (c as HTMLElement).style.overflowY = 'visible';
+        (c as HTMLElement).style.display = 'block';
+      });
+
+      // 2. Captura em altíssima resolução (pixelRatio: 3)
+      const dataUrl = await htmlToImage.toPng(element, {
+        quality: 1,
+        pixelRatio: 3, 
+        backgroundColor: "#ffffff",
+        filter: (node: any) => {
+          // Esconde botões do PDF final
+          if (node.tagName === 'BUTTON') return false;
+          // Esconde elementos com classe 'print:hidden' se desejar
+          if (node.classList && node.classList.contains('print:hidden')) return false;
+          return true;
+        },
+        width: 1024, // Força largura consistente
+      });
+
+      // 3. Restaurar estilos originais da tela
+      originalStyles.forEach(s => {
+        s.el.style.maxHeight = s.maxHeight;
+        s.el.style.overflowY = s.overflowY;
+        s.el.style.display = s.display;
+      });
+
+      // 4. Geração do PDF em PÁGINA ÚNICA
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => img.onload = resolve);
+
+      const pdfWidth = 595.28; // Largura padrão A4 (pt)
+      const pdfHeight = (img.height * pdfWidth) / img.width; // Altura proporcional
+
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'pt',
+        format: [pdfWidth, pdfHeight]
+      });
+      
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
+      const fileName = `${data.cliente || 'Proposta'}_${data.empreendimento || 'Empreendimento'}_${data.unidade || 'Unidade'}.pdf`.replace(/[/\\?%*:|"<>]/g, '-');
+      pdf.save(fileName);
+    } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
+      alert("Erro ao gerar PDF. Tente imprimir via navegador (Ctrl+P).");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-24">
       {/* Header Branding */}
@@ -582,7 +660,24 @@ export default function App() {
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm sm:text-base font-bold"
             >
               <Printer size={18} />
-              Imprimir / PDF
+              Imprimir
+            </button>
+            <button 
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm sm:text-base font-bold"
+            >
+              {isExporting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Gerando...
+                </div>
+              ) : (
+                <>
+                  <Download size={18} />
+                  Baixar PDF
+                </>
+              )}
             </button>
             <button 
               onClick={handleOpenNewTab}
@@ -595,7 +690,7 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 print:p-0">
-        <div className="bg-white shadow-xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none">
+        <div ref={reportRef} className="bg-white shadow-xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none">
           {/* Visual Header from Image */}
           <div className="relative h-16 sm:h-24 bg-white flex items-center justify-between px-4 sm:px-12 border-b-4 border-indigo-900">
             <span className="text-2xl sm:text-4xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
@@ -1460,37 +1555,40 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
 
-            <div className="mt-8 flex flex-col items-center gap-4 print:hidden">
-              <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span className="text-sm font-bold text-gray-700">Modo Resumido para Impressão</span>
-                <button
-                  onClick={() => setIsResumoMode(!isResumoMode)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isResumoMode ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isResumoMode ? 'translate-x-6' : 'translate-x-1'}`}
-                  />
-                </button>
-              </div>
-              <button 
-                onClick={handlePrint}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
+        {/* Browser-only sections (Not in PDF) */}
+        <div className="mt-8 space-y-8 print:hidden">
+          <div className="bg-white shadow-xl rounded-2xl overflow-hidden p-6 sm:p-10 flex flex-col items-center gap-4 border border-gray-200">
+            <div className="flex items-center gap-3 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+              <span className="text-sm font-bold text-gray-700">Modo Resumido para Impressão</span>
+              <button
+                onClick={() => setIsResumoMode(!isResumoMode)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isResumoMode ? 'bg-indigo-600' : 'bg-gray-200'}`}
               >
-                <Printer size={24} />
-                Gerar PDF / Imprimir Agora
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isResumoMode ? 'translate-x-6' : 'translate-x-1'}`}
+                />
               </button>
-              <p className="text-xs text-gray-400 text-center max-w-xs">
-                Dica: Se a janela de impressão não abrir, clique no botão "Abrir em Nova Aba" no topo da página.
-              </p>
             </div>
+            <button 
+              onClick={handlePrint}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 active:scale-95 font-bold text-lg"
+            >
+              <Printer size={24} />
+              Gerar PDF / Imprimir Agora
+            </button>
+            <p className="text-xs text-gray-400 text-center max-w-xs">
+              Dica: Se a janela de impressão não abrir, clique no botão "Abrir em Nova Aba" no topo da página.
+            </p>
+          </div>
 
-            {/* Explicação Ranking */}
-            <section className="mb-8 mt-12 page-break-before print:hidden">
-              <h2 className="text-center text-2xl font-bold text-indigo-800 mb-6">Políticas Ranking</h2>
-              
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div className="space-y-3">
+          {/* Explicação Ranking */}
+          <section className="bg-white shadow-xl rounded-2xl overflow-hidden p-6 sm:p-10 border border-gray-200">
+            <h2 className="text-center text-2xl font-bold text-indigo-800 mb-6 uppercase tracking-wider">Políticas dos Rankings</h2>
+            
+            <div className="space-y-3">
                   {/* Diamante */}
                   <div className="flex flex-col sm:flex-row items-stretch border-2 border-blue-400 rounded-lg overflow-hidden bg-blue-50">
                     <div className="bg-blue-100 w-full sm:w-16 flex sm:flex-col items-center justify-center p-2 border-b-2 sm:border-b-0 sm:border-r-2 border-blue-400 gap-2 sm:gap-0">
@@ -1578,18 +1676,8 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </div>
             </section>
           </div>
-
-          {/* Footer Branding */}
-          <footer className="p-12 pt-0 flex flex-col items-center gap-8 opacity-30 grayscale pointer-events-none">
-             <div className="flex items-center gap-12">
-              <span className="text-xl font-black text-indigo-900 tracking-tighter">DIRECIONAL</span>
-              <span className="text-xl font-black text-indigo-900 tracking-tighter">RIVA</span>
-            </div>
-          </footer>
-        </div>
       </main>
 
       {/* Footer AdSense Placeholder */}
